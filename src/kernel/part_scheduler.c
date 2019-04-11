@@ -37,7 +37,7 @@ void SysTick_Handler(void)
 
 
     static process_t* active_process = NULL;
-    if (active_process != NULL)
+    if (active_process != NULL)                                                  // ALWAYS NULL
     {
         // Save the value of the stack pointer for later use.
         active_process->stackpointer = stackpointer;
