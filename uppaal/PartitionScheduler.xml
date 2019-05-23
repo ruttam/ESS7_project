@@ -1,7 +1,10 @@
-<?xml version="1.0" encoding="utf-8"?><!DOCTYPE nta PUBLIC '-//Uppaal Team//DTD Flat System 1.1//EN' 'http://www.it.uu.se/research/group/darts/uppaal/flat-1_1.dtd'><nta><declaration>// Place global declarations here.
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE nta PUBLIC '-//Uppaal Team//DTD Flat System 1.1//EN' 'http://www.it.uu.se/research/group/darts/uppaal/flat-1_2.dtd'>
+<nta>
+	<declaration>// Place global declarations here.
 // MAJOR FRAME IDENTIFICATION --------------------------------------------
 
-const int majorFrameSeconds = 50;
+const int majorFrameSeconds = 200;
 clock majorFrame;
 // OS interrupt frequency
 int interr_freq = 1;
@@ -25,11 +28,11 @@ typedef struct {
 
 PartitionType ps[PARTITIONS] = {
    {0, 0, 0, 0},
-   {1, 10, 2, 0},
-   {2, 10, 1, 0},
-   {3, 10, 3, 0},
-   {4, 10, 2, 0},
-   {5, 20, 2, 0}
+   {1, 100, 20, 0},
+   {2, 100, 10, 0},
+   {3, 100, 30, 0},
+   {4, 100, 20, 0},
+   {5, 200, 20, 0}
 };
 
 typedef struct {
@@ -38,17 +41,17 @@ typedef struct {
 } InitDuration;
 
 const InitDuration initDuration[PARTITIONS] = {
-   {0, 1},
-   {1, 5},
-   {2, 4},
-   {3, 3},
-   {4, 2},
-   {5, 1}
+   {0, 0},
+   {1, 0},
+   {2, 0},
+   {3, 0},
+   {4, 0},
+   {5, 0}
 };
 
-urgent chan START_PARTITION;
-urgent broadcast chan SET_PARTITION_MODE[partition_id][mode_id];
-urgent chan SCHEDULE_PARTITIONS;
+urgent broadcast chan START_PARTITION;                                //
+broadcast chan SET_PARTITION_MODE[partition_id][mode_id];
+urgent broadcast chan SCHEDULE_PARTITIONS;                            //
 
 partition_id current_part = 0; // curent partition ID
 
@@ -74,17 +77,17 @@ typedef const struct {
 } Window;
 
 const Window ws[WINDOWS] = {
-   {101, 1, 2},
-   {102, 10, 2},
-   {201, 5, 1},
-   {202, 13, 1},
-   {301, 4, 3},
-   {302, 14, 3},
-   {401, 3, 1},
-   {402, 7, 1},
-   {403, 12, 1},
-   {404, 17, 1},
-   {501, 18, 2}
+   {101, 0, 20},
+   {102, 100, 20},
+   {201, 30, 10},
+   {202, 130, 10},
+   {301, 40, 30},
+   {302, 140, 30},
+   {401, 20, 10},
+   {402, 70, 10},
+   {403, 120, 10},
+   {404, 170, 10},
+   {501, 180, 20}
 };
 
 // -----------------------------------------------------------------------
@@ -123,7 +126,7 @@ lock_id UNLOCK_PREEMPTION(){
    return LOCK_LEVEL = 1;
 }
 
-const int PROCESSES = 5;
+const int PROCESSES = 6;
 typedef int [0, PROCESSES - 1] process_id;
 
 typedef const struct {
@@ -137,17 +140,18 @@ typedef const struct {
 int n = 1;
 
 const ProcessType pss[PROCESSES] = {
-   {0, 0, 20, 10, 0},
-   {1, 1, 20, 10, 2},
+   {0, 0, 200, 20, 0},
+   {1, 1, 200, 10, 2},
    //{2, 1, 20, 3, 1},
-   {1, 2, 20, 10, 0},
+   {2, 2, 200, 10, 0},
   // {4, 2, 20, 3, 1},
    //{5, 2, 50, 2, 2},
-   {2, 3, 20, 10, 0},
+   {3, 3, 200, 20, 0},
   // {7, 3, 50, 3, 1},
    //{8, 3, 50, 2, 2},
    //{9, 4, 50, 1, 0},
-   {3, 4, 20, 30, 1}
+   {4, 4, 200, 30, 1},
+   {5, 5, 200, 10, 1}
 };
 
 typedef struct {
@@ -168,19 +172,20 @@ ProcessMode psm[PROCESSES] = {
   // {8, 0},
   // {9, 0},
    {3, 0},
-   {4, 0}
+   {4, 0},
+   {5, 0}
 };
 
 // broadcast because it initiates scheduling process and partition processes
 urgent broadcast chan SCHEDULE_PROCESSES[partition_id];
-urgent broadcast chan START[process_id];
+broadcast chan START[process_id];
 urgent broadcast chan RUN[process_id];
 urgent broadcast chan PERIODIC_WAIT[process_id];
-urgent broadcast chan SUSPEND[process_id];
+broadcast chan SUSPEND[process_id];
 urgent broadcast chan SUSPEND_SELF[process_id];
 broadcast chan STOP_SELF[process_id];
-urgent chan STOP[process_id];
-urgent chan RESUME[process_id];
+broadcast chan STOP[process_id];    //
+broadcast chan RESUME[process_id];    //
 broadcast chan CHECK_SCHEDULABILITY[process_id];
 
 int current_proc = 0;	// current process ID
@@ -194,6 +199,15 @@ mode_id getMode(process_id id) {
       if(psm[i].id == id)
          return psm[i].mode;
    return 0;
+}
+
+mode_id setMode(mode_id mode, process_id id) {
+   int i;
+   for(i = 0; i &lt; PROCESSES; i++)
+      if(psm[i].id == id){
+         psm[i].mode = mode;
+      }
+   return mode;
 }
 
 int getProcess(){
@@ -287,14 +301,12 @@ typedef struct {
 int watchdog_counter = 0;
 
 
-urgent broadcast chan SAVE_CONTEXT;
+broadcast chan SAVE_CONTEXT;
 urgent broadcast chan RESTORE_CONTEXT;
-urgent chan NO_ERR;
+urgent broadcast chan NO_ERR;    //
 
 
 // -----------------------------------------------------------------------
-
-urgent broadcast chan HealthMonitor[partition_id];
 
 urgent broadcast chan RAISE_APPLICATION_ERROR;
 urgent broadcast chan REPORT_APPLICATION_MESSAGE;
@@ -361,10 +373,23 @@ int getErrors(partition_id id) {
    return 0;
 }
 
+int error_count = 0;
+
+int registerError(error_id code) {
+   error_count++;
+   //errorOccurences[code] = errorOccurences[code] + 1;
+   return code;
+}
+
+int handler_process_id = 0; // error handler process id of a particular partition (if any)
 
 // -----------------------------------------------------------------------
 
-</declaration><template><name>Partition</name><parameter>const partition_id id</parameter><declaration>// Place local declarations here.
+</declaration>
+	<template>
+		<name>Partition</name>
+		<parameter>const partition_id id</parameter>
+		<declaration>// Place local declarations here.
 
 mode_id mode; // mode of the partition
 
@@ -374,9 +399,112 @@ mode_id setMode(mode_id mode) {
       if(ps[i].id == id)
          ps[i].mode = mode;
    return mode;
-}</declaration><location id="id0" x="-888" y="-408"><name x="-944" y="-432">WARM</name></location><location id="id1" x="-1176" y="-256"><name x="-1248" y="-280">NORMAL</name></location><location id="id2" x="-888" y="-256"><name x="-936" y="-280">COLD</name></location><location id="id3" x="-592" y="-256"><name x="-640" y="-280">IDLE</name></location><init ref="id3"/><transition><source ref="id2"/><target ref="id2"/><label kind="synchronisation" x="-968" y="-208">SET_PARTITION_MODE[id][1]?</label><label kind="assignment" x="-968" y="-192">mode = setMode(1)</label><nail x="-912" y="-208"/><nail x="-864" y="-208"/></transition><transition><source ref="id0"/><target ref="id0"/><label kind="synchronisation" x="-944" y="-488">SET_PARTITION_MODE[id][2]?</label><label kind="assignment" x="-944" y="-472">mode = setMode(2)</label><nail x="-912" y="-448"/><nail x="-856" y="-448"/></transition><transition><source ref="id2"/><target ref="id3"/><label kind="synchronisation" x="-840" y="-296">SET_PARTITION_MODE[id][0]?</label><label kind="assignment" x="-840" y="-280">mode = setMode(0)</label><nail x="-872" y="-296"/><nail x="-616" y="-296"/></transition><transition><source ref="id3"/><target ref="id0"/><label kind="synchronisation" x="-808" y="-448">SET_PARTITION_MODE[id][2]?</label><label kind="assignment" x="-728" y="-432">mode = setMode(2)</label><nail x="-600" y="-408"/></transition><transition><source ref="id3"/><target ref="id2"/><label kind="synchronisation" x="-824" y="-248">SET_PARTITION_MODE[id][1]?</label><label kind="assignment" x="-824" y="-232">mode = setMode(1)</label></transition><transition><source ref="id0"/><target ref="id3"/><label kind="synchronisation" x="-824" y="-392">SET_PARTITION_MODE[id][0]?</label><label kind="assignment" x="-752" y="-376">mode = setMode(0)</label><nail x="-848" y="-352"/><nail x="-624" y="-352"/></transition><transition><source ref="id0"/><target ref="id2"/><label kind="synchronisation" x="-880" y="-344">SET_PARTITION_MODE[id][1]?</label><label kind="assignment" x="-880" y="-328">mode = setMode(1)</label></transition><transition><source ref="id0"/><target ref="id1"/><label kind="synchronisation" x="-1144" y="-392">SET_PARTITION_MODE[id][3]?</label><label kind="assignment" x="-1144" y="-376">mode = setMode(3)</label><nail x="-912" y="-352"/><nail x="-1144" y="-352"/></transition><transition><source ref="id1"/><target ref="id3"/><label kind="synchronisation" x="-984" y="-160">SET_PARTITION_MODE[id][0]?</label><label kind="assignment" x="-984" y="-144">mode = setMode(0)</label><nail x="-1176" y="-160"/><nail x="-592" y="-160"/></transition><transition><source ref="id1"/><target ref="id2"/><label kind="synchronisation" x="-1136" y="-296">SET_PARTITION_MODE[id][1]?</label><label kind="assignment" x="-1136" y="-280">mode = setMode(1)</label><nail x="-1144" y="-296"/><nail x="-904" y="-296"/></transition><transition><source ref="id1"/><target ref="id0"/><label kind="synchronisation" x="-1176" y="-448">SET_PARTITION_MODE[id][2]?</label><label kind="assignment" x="-1176" y="-432">mode = setMode(2)</label><nail x="-1176" y="-408"/></transition><transition><source ref="id2"/><target ref="id1"/><label kind="synchronisation" x="-1136" y="-248">SET_PARTITION_MODE[id][3]?</label><label kind="assignment" x="-1136" y="-232">mode = setMode(3)</label></transition></template><template><name>PartitionScheduler</name><declaration>int i;	// window counter of range [0, WINDOWS]
-// as window counter (and ID) 0 is a placeholder window,
-// counter value is set to 1 at the beginning of scheduling
+}</declaration>
+		<location id="id0" x="-888" y="-408">
+			<name x="-944" y="-432">WARM</name>
+		</location>
+		<location id="id1" x="-1176" y="-256">
+			<name x="-1248" y="-280">NORMAL</name>
+		</location>
+		<location id="id2" x="-888" y="-256">
+			<name x="-936" y="-280">COLD</name>
+		</location>
+		<location id="id3" x="-592" y="-256">
+			<name x="-640" y="-280">IDLE</name>
+		</location>
+		<init ref="id3"/>
+		<transition>
+			<source ref="id2"/>
+			<target ref="id2"/>
+			<label kind="synchronisation" x="-968" y="-208">SET_PARTITION_MODE[id][1]?</label>
+			<label kind="assignment" x="-968" y="-192">mode = setMode(1)</label>
+			<nail x="-912" y="-208"/>
+			<nail x="-864" y="-208"/>
+		</transition>
+		<transition>
+			<source ref="id0"/>
+			<target ref="id0"/>
+			<label kind="synchronisation" x="-944" y="-488">SET_PARTITION_MODE[id][2]?</label>
+			<label kind="assignment" x="-944" y="-472">mode = setMode(2)</label>
+			<nail x="-912" y="-448"/>
+			<nail x="-856" y="-448"/>
+		</transition>
+		<transition>
+			<source ref="id2"/>
+			<target ref="id3"/>
+			<label kind="synchronisation" x="-840" y="-296">SET_PARTITION_MODE[id][0]?</label>
+			<label kind="assignment" x="-840" y="-280">mode = setMode(0)</label>
+			<nail x="-872" y="-296"/>
+			<nail x="-616" y="-296"/>
+		</transition>
+		<transition>
+			<source ref="id3"/>
+			<target ref="id0"/>
+			<label kind="synchronisation" x="-808" y="-448">SET_PARTITION_MODE[id][2]?</label>
+			<label kind="assignment" x="-728" y="-432">mode = setMode(2)</label>
+			<nail x="-600" y="-408"/>
+		</transition>
+		<transition>
+			<source ref="id3"/>
+			<target ref="id2"/>
+			<label kind="synchronisation" x="-824" y="-248">SET_PARTITION_MODE[id][1]?</label>
+			<label kind="assignment" x="-824" y="-232">mode = setMode(1)</label>
+		</transition>
+		<transition>
+			<source ref="id0"/>
+			<target ref="id3"/>
+			<label kind="synchronisation" x="-824" y="-392">SET_PARTITION_MODE[id][0]?</label>
+			<label kind="assignment" x="-752" y="-376">mode = setMode(0)</label>
+			<nail x="-848" y="-352"/>
+			<nail x="-624" y="-352"/>
+		</transition>
+		<transition>
+			<source ref="id0"/>
+			<target ref="id2"/>
+			<label kind="synchronisation" x="-880" y="-344">SET_PARTITION_MODE[id][1]?</label>
+			<label kind="assignment" x="-880" y="-328">mode = setMode(1)</label>
+		</transition>
+		<transition>
+			<source ref="id0"/>
+			<target ref="id1"/>
+			<label kind="synchronisation" x="-1144" y="-392">SET_PARTITION_MODE[id][3]?</label>
+			<label kind="assignment" x="-1144" y="-376">mode = setMode(3)</label>
+			<nail x="-912" y="-352"/>
+			<nail x="-1144" y="-352"/>
+		</transition>
+		<transition>
+			<source ref="id1"/>
+			<target ref="id3"/>
+			<label kind="synchronisation" x="-984" y="-160">SET_PARTITION_MODE[id][0]?</label>
+			<label kind="assignment" x="-984" y="-144">mode = setMode(0)</label>
+			<nail x="-1176" y="-160"/>
+			<nail x="-592" y="-160"/>
+		</transition>
+		<transition>
+			<source ref="id1"/>
+			<target ref="id2"/>
+			<label kind="synchronisation" x="-1136" y="-296">SET_PARTITION_MODE[id][1]?</label>
+			<label kind="assignment" x="-1136" y="-280">mode = setMode(1)</label>
+			<nail x="-1144" y="-296"/>
+			<nail x="-904" y="-296"/>
+		</transition>
+		<transition>
+			<source ref="id1"/>
+			<target ref="id0"/>
+			<label kind="synchronisation" x="-1176" y="-448">SET_PARTITION_MODE[id][2]?</label>
+			<label kind="assignment" x="-1176" y="-432">mode = setMode(2)</label>
+			<nail x="-1176" y="-408"/>
+		</transition>
+		<transition>
+			<source ref="id2"/>
+			<target ref="id1"/>
+			<label kind="synchronisation" x="-1136" y="-248">SET_PARTITION_MODE[id][3]?</label>
+			<label kind="assignment" x="-1136" y="-232">mode = setMode(3)</label>
+		</transition>
+	</template>
+	<template>
+		<name>PartitionScheduler</name>
+		<declaration>int i = 0;	// window counter of range [0, WINDOWS]
 
 partition_id getPartition (window_id window) {
    int j;
@@ -384,10 +512,111 @@ partition_id getPartition (window_id window) {
       if(pairs[j].window == window)
          return pairs[j].partition;
    return 0;
-}</declaration><location id="id4" x="-720" y="-144"><name x="-728" y="-176">s4</name></location><location id="id5" x="-808" y="-320"><name x="-816" y="-352">s5</name><urgent/></location><location id="id6" x="-1096" y="-64"><name x="-1120" y="-88">s2</name><urgent/></location><location id="id7" x="-808" y="-184"><name x="-832" y="-176">s3</name><urgent/></location><location id="id8" x="-1096" y="-184"><name x="-1120" y="-208">s1</name><urgent/></location><location id="id9" x="-1096" y="-320"><name x="-1112" y="-352">initial</name></location><init ref="id9"/><transition><source ref="id4"/><target ref="id7"/><label kind="synchronisation" x="-792" y="-208">SET_PARTITION_MODE[current_part][3]?</label><nail x="-744" y="-184"/></transition><transition><source ref="id7"/><target ref="id5"/><label kind="guard" x="-800" y="-264">GET_PARTITION_STATUS(current_part) == 3</label></transition><transition><source ref="id7"/><target ref="id4"/><label kind="guard" x="-800" y="-128">GET_PARTITION_STATUS(current_part) != 3</label><label kind="synchronisation" x="-800" y="-112">START_PARTITION!</label><nail x="-792" y="-144"/></transition><transition><source ref="id8"/><target ref="id6"/><label kind="guard" x="-1080" y="-176">majorFrame &gt; ws[i].start &amp;&amp;
-majorFrame &gt;= ws[i].start + ws[i].duration</label><nail x="-1080" y="-144"/><nail x="-992" y="-144"/><nail x="-992" y="-64"/></transition><transition><source ref="id5"/><target ref="id9"/><label kind="synchronisation" x="-1064" y="-344">NO_ERR!</label><label kind="assignment" x="-968" y="-360">watchdog_counter =
-watchdog_counter + 1</label></transition><transition><source ref="id8"/><target ref="id6"/><label kind="guard" x="-1176" y="-136">majorFrame &lt; ws[i].start</label></transition><transition><source ref="id8"/><target ref="id7"/><label kind="guard" x="-1072" y="-240">majorFrame &gt; ws[i].start &amp;&amp;
-majorFrame &lt; ws[i].start + ws[i].duration</label><label kind="assignment" x="-1072" y="-208">current_part = getPartition(ws[i].id)</label></transition><transition><source ref="id6"/><target ref="id8"/><label kind="guard" x="-1224" y="-48">i + 1 &lt; WINDOWS</label><label kind="assignment" x="-1160" y="-64">i = i + 1</label><nail x="-1184" y="-64"/><nail x="-1184" y="-184"/></transition><transition><source ref="id6"/><target ref="id7"/><label kind="guard" x="-944" y="-56">i + 1 &gt;= WINDOWS</label><label kind="assignment" x="-920" y="-72">current_part = 0</label><nail x="-1096" y="-32"/><nail x="-808" y="-32"/></transition><transition><source ref="id8"/><target ref="id7"/><label kind="guard" x="-1072" y="-296">majorFrame == ws[i].start</label><label kind="assignment" x="-1072" y="-280">current_part = getPartition(ws[i].id)</label><nail x="-1072" y="-256"/><nail x="-832" y="-256"/></transition><transition><source ref="id9"/><target ref="id8"/><label kind="synchronisation" x="-1272" y="-288">SCHEDULE_PARTITIONS?</label><label kind="assignment" x="-1128" y="-272">i = 1</label></transition></template><template><name>Process</name><parameter>process_id id</parameter><declaration>clock x, y;
+}</declaration>
+		<location id="id4" x="-720" y="-144">
+			<name x="-728" y="-176">s4</name>
+		</location>
+		<location id="id5" x="-808" y="-320">
+			<name x="-816" y="-352">s5</name>
+			<urgent/>
+		</location>
+		<location id="id6" x="-1096" y="-64">
+			<name x="-1120" y="-88">s2</name>
+			<urgent/>
+		</location>
+		<location id="id7" x="-808" y="-184">
+			<name x="-832" y="-176">s3</name>
+			<urgent/>
+		</location>
+		<location id="id8" x="-1096" y="-184">
+			<name x="-1120" y="-208">s1</name>
+			<urgent/>
+		</location>
+		<location id="id9" x="-1096" y="-320">
+			<name x="-1112" y="-352">initial</name>
+		</location>
+		<init ref="id9"/>
+		<transition>
+			<source ref="id4"/>
+			<target ref="id7"/>
+			<label kind="synchronisation" x="-792" y="-208">SET_PARTITION_MODE[current_part][3]?</label>
+			<nail x="-744" y="-184"/>
+		</transition>
+		<transition>
+			<source ref="id7"/>
+			<target ref="id5"/>
+			<label kind="guard" x="-807" y="-289">GET_PARTITION_STATUS(current_part) == 3</label>
+			<label kind="synchronisation" x="-808" y="-269">SET_PARTITION_MODE[current_part][3]!</label>
+		</transition>
+		<transition>
+			<source ref="id7"/>
+			<target ref="id4"/>
+			<label kind="guard" x="-800" y="-128">GET_PARTITION_STATUS(current_part) != 3</label>
+			<label kind="synchronisation" x="-800" y="-112">START_PARTITION!</label>
+			<nail x="-792" y="-144"/>
+		</transition>
+		<transition>
+			<source ref="id8"/>
+			<target ref="id6"/>
+			<label kind="guard" x="-1080" y="-176">majorFrame &gt; ws[i].start &amp;&amp;
+majorFrame &gt;= ws[i].start + ws[i].duration</label>
+			<nail x="-1080" y="-144"/>
+			<nail x="-992" y="-144"/>
+			<nail x="-992" y="-64"/>
+		</transition>
+		<transition>
+			<source ref="id5"/>
+			<target ref="id9"/>
+			<label kind="synchronisation" x="-1064" y="-344">NO_ERR!</label>
+			<label kind="assignment" x="-960" y="-340">watchdog_counter++</label>
+		</transition>
+		<transition>
+			<source ref="id8"/>
+			<target ref="id6"/>
+			<label kind="guard" x="-1176" y="-136">majorFrame &lt; ws[i].start</label>
+		</transition>
+		<transition>
+			<source ref="id8"/>
+			<target ref="id7"/>
+			<label kind="guard" x="-1072" y="-240">majorFrame &gt; ws[i].start &amp;&amp;
+majorFrame &lt; ws[i].start + ws[i].duration</label>
+			<label kind="assignment" x="-1072" y="-208">current_part = getPartition(ws[i].id)</label>
+		</transition>
+		<transition>
+			<source ref="id6"/>
+			<target ref="id8"/>
+			<label kind="guard" x="-1224" y="-48">i + 1 &lt; WINDOWS</label>
+			<label kind="assignment" x="-1160" y="-64">i = i + 1</label>
+			<nail x="-1184" y="-64"/>
+			<nail x="-1184" y="-184"/>
+		</transition>
+		<transition>
+			<source ref="id6"/>
+			<target ref="id7"/>
+			<label kind="guard" x="-944" y="-56">i + 1 &gt;= WINDOWS</label>
+			<label kind="assignment" x="-920" y="-72">current_part = 0</label>
+			<nail x="-1096" y="-32"/>
+			<nail x="-808" y="-32"/>
+		</transition>
+		<transition>
+			<source ref="id8"/>
+			<target ref="id7"/>
+			<label kind="guard" x="-1072" y="-296">majorFrame == ws[i].start</label>
+			<label kind="assignment" x="-1072" y="-280">current_part = getPartition(ws[i].id)</label>
+			<nail x="-1072" y="-256"/>
+			<nail x="-832" y="-256"/>
+		</transition>
+		<transition>
+			<source ref="id9"/>
+			<target ref="id8"/>
+			<label kind="synchronisation" x="-1272" y="-288">SCHEDULE_PARTITIONS?</label>
+			<label kind="assignment" x="-1128" y="-272">i = 0</label>
+		</transition>
+	</template>
+	<template>
+		<name>Process</name>
+		<parameter>process_id id</parameter>
+		<declaration>clock x, y;
 
 partition_id part_id;
 int deadline;
@@ -408,8 +637,9 @@ process_id CREATE_RPOCESS(process_id id) {
 mode_id setMode(mode_id mode) {
    int i;
    for(i = 0; i &lt; PROCESSES; i++)
-      if(psm[i].id == id)
+      if(psm[i].id == id){
          psm[i].mode = mode;
+      }
    return mode;
 }
 
@@ -424,26 +654,499 @@ int getPeriod(process_id id) {
 int registerError(error_id code) {
    //errorOccurences[code] = errorOccurences[code] + 1;
    return code;
-}</declaration><location id="id10" x="-576" y="96"><name x="-584" y="112">IMPEDED</name></location><location id="id11" x="-104" y="88"><name x="-114" y="58">s7</name><urgent/></location><location id="id12" x="-144" y="120"><name x="-154" y="90">s8</name><urgent/></location><location id="id13" x="88" y="-240"><name x="64" y="-272">s3</name><urgent/></location><location id="id14" x="-16" y="-376"><name x="-40" y="-400">s6</name><urgent/></location><location id="id15" x="-16" y="-272"><name x="-40" y="-296">s2</name><urgent/></location><location id="id16" x="-552" y="-176"><name x="-576" y="-200">s1</name><urgent/></location><location id="id17" x="136" y="120"><name x="112" y="96">s4</name><urgent/></location><location id="id18" x="-600" y="-208"><name x="-640" y="-240">ERROR</name><urgent/></location><location id="id19" x="304" y="-376"><name x="280" y="-400">s5</name><urgent/></location><location id="id20" x="-280" y="-304"><name x="-304" y="-336">INITIAL</name></location><location id="id21" x="-280" y="-176"><name x="-360" y="-200">DORMANT</name></location><location id="id22" x="304" y="-40"><name x="320" y="-56">RUNNING</name><label kind="invariant" x="320" y="-40">x &lt;= duration</label></location><location id="id23" x="96" y="-40"><name x="72" y="-80">READY</name><label kind="invariant" x="120" y="-64">y &lt;= deadline</label></location><location id="id24" x="-280" y="-40"><name x="-304" y="-80">WAITING</name><label kind="invariant" x="-256" y="-64">y &lt;= deadline</label></location><init ref="id20"/><transition><source ref="id10"/><target ref="id16"/><label kind="synchronisation" x="-568" y="-8">CHECK_SCHEDULABILITY[id]?</label><label kind="assignment" x="-568" y="8">error_code = registerError(TIMED_OUT)</label><nail x="-576" y="-168"/></transition><transition><source ref="id22"/><target ref="id23"/><label kind="synchronisation" x="144" y="-136">SAVE_CONTEXT?</label><label kind="assignment" x="144" y="-120">previous_proc = id,
-mode = setMode(2)</label><nail x="272" y="-80"/><nail x="128" y="-80"/></transition><transition><source ref="id22"/><target ref="id15"/><label kind="guard" x="120" y="-368">LOCK_LEVEL == 1 &amp;&amp;
-x &gt;= duration</label><label kind="synchronisation" x="8" y="-352">STOP_SELF[id]!</label><nail x="280" y="-328"/><nail x="0" y="-328"/></transition><transition><source ref="id22"/><target ref="id18"/><label kind="guard" x="-592" y="200">y &gt; deadline</label><label kind="assignment" x="-592" y="184">error_code = registerError(TIMED_OUT)</label><nail x="328" y="8"/><nail x="328" y="224"/><nail x="-600" y="224"/></transition><transition><source ref="id23"/><target ref="id13"/><label kind="synchronisation" x="-184" y="-248">SET_PARTITION_MODE[part_id][0]?</label><nail x="48" y="-240"/></transition><transition><source ref="id24"/><target ref="id16"/><label kind="synchronisation" x="-552" y="-40">STOP[id]?</label><nail x="-560" y="-40"/><nail x="-560" y="-152"/></transition><transition><source ref="id23"/><target ref="id13"/><label kind="synchronisation" x="120" y="-224">STOP_SELF[id]?</label><nail x="192" y="-200"/><nail x="112" y="-200"/></transition><transition><source ref="id11"/><target ref="id23"/><label kind="synchronisation" x="-88" y="64">SCHEDULE_PROCESSES[part_id]!</label><nail x="88" y="88"/></transition><transition><source ref="id24"/><target ref="id11"/><label kind="guard" x="-256" y="40">LOCK_LEVEL == 1 &amp;&amp;
+}</declaration>
+		<location id="id10" x="-578" y="93">
+			<name x="-586" y="109">IMPEDED</name>
+			<label kind="invariant" x="-586" y="119">y' == 0</label>
+		</location>
+		<location id="id11" x="-104" y="88">
+			<name x="-114" y="58">s7</name>
+			<urgent/>
+		</location>
+		<location id="id12" x="-144" y="120">
+			<name x="-154" y="90">s8</name>
+			<urgent/>
+		</location>
+		<location id="id13" x="88" y="-240">
+			<name x="64" y="-272">s3</name>
+			<urgent/>
+		</location>
+		<location id="id14" x="-16" y="-376">
+			<name x="-40" y="-400">s6</name>
+			<urgent/>
+		</location>
+		<location id="id15" x="-16" y="-272">
+			<name x="-40" y="-296">s2</name>
+			<urgent/>
+		</location>
+		<location id="id16" x="-552" y="-176">
+			<name x="-576" y="-200">s1</name>
+			<urgent/>
+		</location>
+		<location id="id17" x="136" y="120">
+			<name x="112" y="96">s4</name>
+			<urgent/>
+		</location>
+		<location id="id18" x="-600" y="-208">
+			<name x="-640" y="-240">ERROR</name>
+			<urgent/>
+		</location>
+		<location id="id19" x="304" y="-376">
+			<name x="280" y="-400">s5</name>
+			<urgent/>
+		</location>
+		<location id="id20" x="-280" y="-304">
+			<name x="-304" y="-336">INITIAL</name>
+			<committed/>
+		</location>
+		<location id="id21" x="-280" y="-176">
+			<name x="-360" y="-200">DORMANT</name>
+			<label kind="invariant" x="-290" y="-159">x' == 0 &amp;&amp;
+y' == 0</label>
+		</location>
+		<location id="id22" x="304" y="-40">
+			<name x="314" y="-85">RUNNING</name>
+			<label kind="invariant" x="323" y="-59">x &lt;= duration &amp;&amp;
+x' == 1 &amp;&amp;
+y' == 0</label>
+		</location>
+		<location id="id23" x="85" y="-42">
+			<name x="61" y="-82">READY</name>
+			<label kind="invariant" x="109" y="-66">y &lt;= deadline &amp;&amp;
+y' == 1 &amp;&amp;
+x' == 0</label>
+		</location>
+		<location id="id24" x="-280" y="-40">
+			<name x="-304" y="-80">WAITING</name>
+			<label kind="invariant" x="-256" y="-64">y &lt;= deadline</label>
+		</location>
+		<init ref="id20"/>
+		<transition>
+			<source ref="id10"/>
+			<target ref="id16"/>
+			<label kind="synchronisation" x="-568" y="-8">CHECK_SCHEDULABILITY[id]?</label>
+			<label kind="assignment" x="-568" y="8">error_code = registerError(TIMED_OUT)</label>
+			<nail x="-576" y="-168"/>
+		</transition>
+		<transition>
+			<source ref="id22"/>
+			<target ref="id23"/>
+			<label kind="guard" x="146" y="-114">y &lt;= deadline &amp;&amp;
+x &lt;= duration</label>
+			<label kind="synchronisation" x="144" y="-136">SAVE_CONTEXT?</label>
+			<label kind="assignment" x="144" y="-120">previous_proc = id,
+mode = setMode(2)</label>
+			<nail x="272" y="-80"/>
+			<nail x="128" y="-80"/>
+		</transition>
+		<transition>
+			<source ref="id22"/>
+			<target ref="id15"/>
+			<label kind="guard" x="120" y="-368">LOCK_LEVEL == 1 &amp;&amp;
+x &gt;= duration</label>
+			<label kind="synchronisation" x="8" y="-352">STOP_SELF[id]!</label>
+			<nail x="280" y="-328"/>
+			<nail x="0" y="-328"/>
+		</transition>
+		<transition>
+			<source ref="id22"/>
+			<target ref="id18"/>
+			<label kind="guard" x="-592" y="200">y &gt; deadline</label>
+			<label kind="assignment" x="-592" y="184">error_code = registerError(TIMED_OUT)</label>
+			<nail x="328" y="8"/>
+			<nail x="328" y="224"/>
+			<nail x="-600" y="224"/>
+		</transition>
+		<transition>
+			<source ref="id23"/>
+			<target ref="id13"/>
+			<label kind="synchronisation" x="-184" y="-248">SET_PARTITION_MODE[part_id][0]?</label>
+			<nail x="48" y="-240"/>
+		</transition>
+		<transition>
+			<source ref="id24"/>
+			<target ref="id16"/>
+			<label kind="guard" x="-542" y="-74">y &lt;= deadline</label>
+			<label kind="synchronisation" x="-552" y="-40">STOP[id]?</label>
+			<nail x="-560" y="-40"/>
+			<nail x="-560" y="-152"/>
+		</transition>
+		<transition>
+			<source ref="id23"/>
+			<target ref="id13"/>
+			<label kind="guard" x="119" y="-221">x &gt; duration</label>
+			<label kind="synchronisation" x="110" y="-238">STOP_SELF[id]!</label>
+			<nail x="204" y="-203"/>
+			<nail x="119" y="-203"/>
+		</transition>
+		<transition>
+			<source ref="id11"/>
+			<target ref="id23"/>
+			<label kind="synchronisation" x="-88" y="64">SCHEDULE_PROCESSES[part_id]!</label>
+			<nail x="88" y="88"/>
+		</transition>
+		<transition>
+			<source ref="id24"/>
+			<target ref="id11"/>
+			<label kind="guard" x="-256" y="40">LOCK_LEVEL == 1 &amp;&amp;
 getPeriod(id) == -1 &amp;&amp;
-waitingEvent(id) == 0</label><label kind="synchronisation" x="-256" y="24">RESUME[id]?</label><nail x="-264" y="88"/></transition><transition><source ref="id23"/><target ref="id24"/><label kind="synchronisation" x="-232" y="-152">SET_PARTITION_MODE[part_id][2]?</label><label kind="assignment" x="-232" y="-136">mode = setMode(1)</label><nail x="32" y="-112"/><nail x="-240" y="-112"/></transition><transition><source ref="id23"/><target ref="id24"/><label kind="synchronisation" x="-232" y="-112">SET_PARTITION_MODE[part_id][1]?</label><label kind="assignment" x="-232" y="-96">mode = setMode(1)</label><nail x="24" y="-80"/><nail x="-240" y="-80"/></transition><transition><source ref="id22"/><target ref="id17"/><label kind="guard" x="160" y="104">getPeriod(id) == -1 &amp;&amp;
-LOCK_LEVEL == 1</label><label kind="synchronisation" x="160" y="88">SUSPEND_SELF[id]!</label><nail x="312" y="8"/><nail x="312" y="144"/><nail x="168" y="144"/></transition><transition><source ref="id12"/><target ref="id24"/><label kind="guard" x="-248" y="96">y &lt;= deadline</label><nail x="-280" y="120"/><nail x="-280" y="-16"/></transition><transition><source ref="id12"/><target ref="id18"/><label kind="guard" x="-256" y="160">y &gt;= deadline</label><nail x="-168" y="160"/><nail x="-608" y="160"/><nail x="-608" y="-184"/></transition><transition><source ref="id13"/><target ref="id15"/><label kind="guard" x="104" y="-280">LOCK_LEVEL == 0</label><label kind="assignment" x="104" y="-264">previous_proc = -1</label><nail x="88" y="-272"/></transition><transition><source ref="id14"/><target ref="id15"/><label kind="assignment" x="-136" y="-344">LOCK_LEVEL = 1</label></transition><transition><source ref="id15"/><target ref="id21"/><label kind="assignment" x="-216" y="-304">y = 0, x = 0,
-mode = setMode(0)</label><nail x="-224" y="-272"/></transition><transition><source ref="id16"/><target ref="id21"/><label kind="assignment" x="-536" y="-208">x = 0, y = 0,
-mode = setMode(0)</label><nail x="-528" y="-176"/></transition><transition><source ref="id19"/><target ref="id14"/><label kind="guard" x="-16" y="-448">previous_proc == -1</label><label kind="synchronisation" x="-16" y="-464">SCHEDULE_PROCESSES[part_id]!</label><nail x="304" y="-424"/><nail x="-16" y="-424"/></transition><transition><source ref="id19"/><target ref="id14"/><label kind="guard" x="16" y="-400">previous_proc != -1</label><label kind="synchronisation" x="16" y="-416">START[previous_proc]!</label></transition><transition><source ref="id22"/><target ref="id19"/><label kind="guard" x="312" y="-176">LOCK_LEVEL == 0</label><label kind="synchronisation" x="312" y="-240">STOP_SELF[id]!</label></transition><transition><source ref="id17"/><target ref="id12"/><label kind="synchronisation" x="-112" y="96">SCHEDULE_PROCESSES[part_id]!</label></transition><transition><source ref="id22"/><target ref="id13"/><label kind="synchronisation" x="104" y="-296">STOP_SELF[id]?</label><nail x="240" y="-240"/></transition><transition><source ref="id23"/><target ref="id10"/><label kind="guard" x="-392" y="96">y &gt;= deadline</label><nail x="96" y="96"/></transition><transition><source ref="id18"/><target ref="id16"/><label kind="synchronisation" x="-576" y="-232">RAISE_APPLICATION_ERROR!</label><nail x="-552" y="-208"/></transition><transition><source ref="id24"/><target ref="id10"/><label kind="guard" x="-392" y="56">y &gt;= deadline</label><nail x="-304" y="56"/><nail x="-552" y="56"/></transition><transition><source ref="id22"/><target ref="id15"/><label kind="synchronisation" x="8" y="-320">SET_PARTITION_MODE[part_id][0]?</label><nail x="256" y="-296"/><nail x="8" y="-296"/></transition><transition><source ref="id24"/><target ref="id16"/><label kind="synchronisation" x="-544" y="-64">SET_PARTITION_MODE[part_id][0]?</label><nail x="-304" y="-64"/><nail x="-552" y="-64"/></transition><transition><source ref="id20"/><target ref="id21"/><label kind="assignment" x="-464" y="-272">id = CREATE_RPOCESS(id)</label></transition><transition><source ref="id22"/><target ref="id24"/><label kind="guard" x="192" y="168">getPeriod(id) == -1</label><label kind="synchronisation" x="216" y="152">SUSPEND[id]?</label><label kind="assignment" x="192" y="184">previous_proc = id,
-mode = setMode(2)</label><nail x="320" y="8"/><nail x="320" y="152"/><nail x="-288" y="152"/><nail x="-288" y="0"/></transition><transition><source ref="id22"/><target ref="id17"/><label kind="synchronisation" x="160" y="48">PERIODIC_WAIT[id]?</label><nail x="304" y="-16"/><nail x="304" y="32"/><nail x="136" y="32"/></transition><transition><source ref="id21"/><target ref="id23"/><label kind="guard" x="-240" y="-208">GET_PARTITION_STATUS(part_id) == 3</label><label kind="synchronisation" x="-240" y="-224">START[id]?</label><label kind="assignment" x="-240" y="-192">x = 0, y = 0, mode = setMode(2)</label><nail x="56" y="-176"/></transition><transition><source ref="id23"/><target ref="id13"/><label kind="synchronisation" x="104" y="-192">STOP[id]?</label></transition><transition><source ref="id23"/><target ref="id24"/><label kind="guard" x="-48" y="32">getPeriod(id) == -1</label><label kind="synchronisation" x="-24" y="0">SUSPEND[id]?</label><label kind="assignment" x="-48" y="16">mode = setMode(1)</label><nail x="72" y="0"/><nail x="-264" y="0"/></transition><transition><source ref="id21"/><target ref="id24"/><label kind="guard" x="-544" y="-136">GET_PARTITION_STATUS(part_id) != 3</label><label kind="synchronisation" x="-360" y="-152">START[id]?</label><label kind="assignment" x="-488" y="-120">y = 0, x = 0, mode = setMode(1)</label><nail x="-280" y="-152"/></transition><transition><source ref="id23"/><target ref="id22"/><label kind="synchronisation" x="120" y="-40">START[id]?</label><label kind="assignment" x="120" y="-24">x = 0,
-mode = setMode(3)</label></transition><transition><source ref="id24"/><target ref="id23"/><label kind="synchronisation" x="-232" y="-40">SET_PARTITION_MODE[part_id][3]?</label><label kind="assignment" x="-232" y="-24">mode = setMode(2)</label></transition></template><template><name>HealthMonitorTemplate</name><declaration>int handler_process_id; // error handler process id of a particular partition (if any)
-
-int findErrorHandler() {   
+waitingEvent(id) == 0 &amp;&amp;
+y &lt;= deadline</label>
+			<label kind="synchronisation" x="-256" y="24">RESUME[id]?</label>
+			<nail x="-264" y="88"/>
+		</transition>
+		<transition>
+			<source ref="id23"/>
+			<target ref="id24"/>
+			<label kind="guard" x="-222" y="-146">y &lt;= deadline</label>
+			<label kind="synchronisation" x="-232" y="-152">SET_PARTITION_MODE[part_id][2]?</label>
+			<label kind="assignment" x="-232" y="-136">mode = setMode(1)</label>
+			<nail x="32" y="-112"/>
+			<nail x="-240" y="-112"/>
+		</transition>
+		<transition>
+			<source ref="id23"/>
+			<target ref="id24"/>
+			<label kind="guard" x="42" y="-95">y &lt;= deadline</label>
+			<label kind="synchronisation" x="-232" y="-112">SET_PARTITION_MODE[part_id][1]?</label>
+			<label kind="assignment" x="-232" y="-96">mode = setMode(1)</label>
+			<nail x="24" y="-80"/>
+			<nail x="-240" y="-80"/>
+		</transition>
+		<transition>
+			<source ref="id22"/>
+			<target ref="id17"/>
+			<label kind="guard" x="160" y="104">getPeriod(id) == -1 &amp;&amp;
+LOCK_LEVEL == 1</label>
+			<label kind="synchronisation" x="160" y="88">SUSPEND_SELF[id]!</label>
+			<nail x="312" y="8"/>
+			<nail x="312" y="144"/>
+			<nail x="168" y="144"/>
+		</transition>
+		<transition>
+			<source ref="id12"/>
+			<target ref="id24"/>
+			<label kind="guard" x="-248" y="96">y &lt;= deadline</label>
+			<nail x="-280" y="120"/>
+			<nail x="-280" y="-16"/>
+		</transition>
+		<transition>
+			<source ref="id12"/>
+			<target ref="id18"/>
+			<label kind="guard" x="-256" y="160">y &gt;= deadline</label>
+			<nail x="-168" y="160"/>
+			<nail x="-608" y="160"/>
+			<nail x="-608" y="-184"/>
+		</transition>
+		<transition>
+			<source ref="id13"/>
+			<target ref="id15"/>
+			<nail x="88" y="-272"/>
+		</transition>
+		<transition>
+			<source ref="id14"/>
+			<target ref="id15"/>
+			<label kind="assignment" x="-136" y="-344">LOCK_LEVEL = 1</label>
+		</transition>
+		<transition>
+			<source ref="id15"/>
+			<target ref="id21"/>
+			<label kind="assignment" x="-221" y="-314">y = 0, x = 0,
+mode = setMode(0)</label>
+			<nail x="-224" y="-272"/>
+		</transition>
+		<transition>
+			<source ref="id16"/>
+			<target ref="id21"/>
+			<label kind="assignment" x="-535" y="-221">x = 0, y = 0,
+mode = setMode(0)</label>
+			<nail x="-527" y="-178"/>
+		</transition>
+		<transition>
+			<source ref="id19"/>
+			<target ref="id14"/>
+			<label kind="guard" x="-16" y="-448">previous_proc == -1</label>
+			<label kind="synchronisation" x="-16" y="-464">SCHEDULE_PROCESSES[part_id]!</label>
+			<nail x="304" y="-424"/>
+			<nail x="-16" y="-424"/>
+		</transition>
+		<transition>
+			<source ref="id19"/>
+			<target ref="id14"/>
+			<label kind="guard" x="16" y="-400">previous_proc != -1</label>
+			<label kind="synchronisation" x="16" y="-416">START[previous_proc]!</label>
+		</transition>
+		<transition>
+			<source ref="id22"/>
+			<target ref="id19"/>
+			<label kind="guard" x="312" y="-176">LOCK_LEVEL == 0</label>
+			<label kind="synchronisation" x="312" y="-240">STOP_SELF[id]!</label>
+		</transition>
+		<transition>
+			<source ref="id17"/>
+			<target ref="id12"/>
+			<label kind="synchronisation" x="-112" y="96">SCHEDULE_PROCESSES[part_id]!</label>
+		</transition>
+		<transition>
+			<source ref="id22"/>
+			<target ref="id13"/>
+			<label kind="guard" x="110" y="-280">LOCK_LEVEL == 0</label>
+			<label kind="synchronisation" x="110" y="-297">STOP_SELF[id]?</label>
+			<label kind="assignment" x="110" y="-263">previous_proc = -1</label>
+			<nail x="240" y="-240"/>
+		</transition>
+		<transition>
+			<source ref="id23"/>
+			<target ref="id10"/>
+			<label kind="guard" x="-392" y="96">y &gt;= deadline</label>
+			<nail x="96" y="96"/>
+		</transition>
+		<transition>
+			<source ref="id18"/>
+			<target ref="id16"/>
+			<label kind="synchronisation" x="-586" y="-238">RAISE_APPLICATION_ERROR!</label>
+			<nail x="-552" y="-208"/>
+		</transition>
+		<transition>
+			<source ref="id24"/>
+			<target ref="id10"/>
+			<label kind="guard" x="-392" y="56">y &gt;= deadline</label>
+			<nail x="-304" y="56"/>
+			<nail x="-552" y="56"/>
+		</transition>
+		<transition>
+			<source ref="id22"/>
+			<target ref="id15"/>
+			<label kind="synchronisation" x="8" y="-320">SET_PARTITION_MODE[part_id][0]?</label>
+			<nail x="256" y="-296"/>
+			<nail x="8" y="-296"/>
+		</transition>
+		<transition>
+			<source ref="id24"/>
+			<target ref="id16"/>
+			<label kind="guard" x="-534" y="-98">y &lt;= deadline</label>
+			<label kind="synchronisation" x="-544" y="-64">SET_PARTITION_MODE[part_id][0]?</label>
+			<nail x="-304" y="-64"/>
+			<nail x="-552" y="-64"/>
+		</transition>
+		<transition>
+			<source ref="id20"/>
+			<target ref="id21"/>
+			<label kind="assignment" x="-464" y="-272">id = CREATE_RPOCESS(id)</label>
+		</transition>
+		<transition>
+			<source ref="id22"/>
+			<target ref="id24"/>
+			<label kind="guard" x="192" y="168">getPeriod(id) == -1</label>
+			<label kind="synchronisation" x="216" y="152">SUSPEND[id]?</label>
+			<label kind="assignment" x="192" y="184">previous_proc = id,
+mode = setMode(2)</label>
+			<nail x="320" y="8"/>
+			<nail x="320" y="152"/>
+			<nail x="-288" y="152"/>
+			<nail x="-288" y="0"/>
+		</transition>
+		<transition>
+			<source ref="id22"/>
+			<target ref="id17"/>
+			<label kind="synchronisation" x="160" y="48">PERIODIC_WAIT[id]?</label>
+			<nail x="304" y="-16"/>
+			<nail x="304" y="32"/>
+			<nail x="136" y="32"/>
+		</transition>
+		<transition>
+			<source ref="id21"/>
+			<target ref="id23"/>
+			<label kind="guard" x="-240" y="-208">GET_PARTITION_STATUS(part_id) == 3</label>
+			<label kind="synchronisation" x="-240" y="-224">START[id]?</label>
+			<label kind="assignment" x="-240" y="-192">x = 0, y = 0, mode = setMode(2)</label>
+			<nail x="56" y="-176"/>
+		</transition>
+		<transition>
+			<source ref="id23"/>
+			<target ref="id13"/>
+			<label kind="synchronisation" x="68" y="-195">STOP[id]?</label>
+		</transition>
+		<transition>
+			<source ref="id23"/>
+			<target ref="id24"/>
+			<label kind="guard" x="-48" y="32">getPeriod(id) == -1 &amp;&amp;
+y &lt;= deadline</label>
+			<label kind="synchronisation" x="-24" y="0">SUSPEND[id]?</label>
+			<label kind="assignment" x="-48" y="16">mode = setMode(1)</label>
+			<nail x="72" y="0"/>
+			<nail x="-264" y="0"/>
+		</transition>
+		<transition>
+			<source ref="id21"/>
+			<target ref="id24"/>
+			<label kind="guard" x="-544" y="-136">GET_PARTITION_STATUS(part_id) != 3</label>
+			<label kind="synchronisation" x="-360" y="-152">START[id]?</label>
+			<label kind="assignment" x="-488" y="-120">y = 0, x = 0, mode = setMode(1)</label>
+			<nail x="-280" y="-152"/>
+		</transition>
+		<transition>
+			<source ref="id23"/>
+			<target ref="id22"/>
+			<label kind="guard" x="103" y="-75">y &lt;= deadline</label>
+			<label kind="synchronisation" x="153" y="-34">START[id]?</label>
+			<label kind="assignment" x="153" y="-17">mode = setMode(3)</label>
+		</transition>
+		<transition>
+			<source ref="id24"/>
+			<target ref="id23"/>
+			<label kind="guard" x="-262" y="-75">y &lt;= deadline</label>
+			<label kind="synchronisation" x="-232" y="-40">SET_PARTITION_MODE[part_id][3]?</label>
+			<label kind="assignment" x="-232" y="-24">mode = setMode(2)</label>
+		</transition>
+	</template>
+	<template>
+		<name>HealthMonitorTemplate</name>
+		<declaration>int findErrorHandler() {   
    // find in the processes table process within this partition with priority 0
 
-   return -1;   
+   return handler_process_id;   
 }
 
 int error_count;
-int error_message;</declaration><location id="id25" x="-2584" y="104"><name x="-2594" y="74">s8</name><urgent/></location><location id="id26" x="-2256" y="232"><name x="-2280" y="208">s1</name><urgent/></location><location id="id27" x="-1872" y="256"><name x="-1864" y="232">s5</name></location><location id="id28" x="-1888" y="200"><name x="-1912" y="176">s6</name><urgent/></location><location id="id29" x="-2104" y="104"><name x="-2114" y="74">s3</name><urgent/></location><location id="id30" x="-2104" y="200"><name x="-2120" y="208">s4</name><urgent/></location><location id="id31" x="-1888" y="56"><name x="-1896" y="24">s7</name></location><location id="id32" x="-2256" y="104"><name x="-2280" y="80">s2</name><urgent/></location><location id="id33" x="-2584" y="232"><name x="-2624" y="208">initial</name></location><init ref="id33"/><transition><source ref="id32"/><target ref="id25"/><label kind="guard" x="-2552" y="80">error_count &lt;= 0</label><label kind="synchronisation" x="-2552" y="64">RESTORE_CONTEXT!</label></transition><transition><source ref="id26"/><target ref="id32"/><label kind="synchronisation" x="-2256" y="152">SAVE_CONTEXT!</label></transition><transition><source ref="id27"/><target ref="id32"/><label kind="synchronisation" x="-1944" y="-40">NO_ERR?</label><label kind="assignment" x="-2056" y="-24">error_count = error_count - 1</label><nail x="-1872" y="0"/><nail x="-2256" y="0"/></transition><transition><source ref="id32"/><target ref="id29"/><label kind="guard" x="-2232" y="80">error_count &gt; 0</label></transition><transition><source ref="id30"/><target ref="id27"/><label kind="guard" x="-2096" y="272">handler_process_id == -1</label><label kind="synchronisation" x="-2096" y="256">HM[error_code]!</label><nail x="-2104" y="256"/></transition><transition><source ref="id28"/><target ref="id31"/><label kind="synchronisation" x="-2072" y="88">START[handler_process_id]!</label></transition><transition><source ref="id25"/><target ref="id33"/><label kind="synchronisation" x="-2576" y="128">UNLOCK_PREEMPT!</label><label kind="assignment" x="-2576" y="144">LOCK_LEVEL = UNLOCK_PREEMPTION()</label><nail x="-2584" y="168"/></transition><transition><source ref="id29"/><target ref="id30"/><label kind="synchronisation" x="-2104" y="128">GET_ERROR_STATUS!</label><label kind="assignment" x="-2104" y="144">error_code = getError()</label></transition><transition><source ref="id33"/><target ref="id33"/><label kind="synchronisation" x="-2520" y="256">REPORT_APPLICATION_MESSAGE?</label><label kind="assignment" x="-2520" y="272">error_message = getMessage()</label><nail x="-2584" y="304"/><nail x="-2520" y="304"/></transition><transition><source ref="id31"/><target ref="id32"/><label kind="synchronisation" x="-2144" y="16">SUSPEND_SELF[handler_process_id]?</label><label kind="assignment" x="-2080" y="32">error_count = error_count - 1</label><nail x="-2232" y="56"/></transition><transition><source ref="id30"/><target ref="id28"/><label kind="guard" x="-2088" y="216">handler_process_id != -1</label><label kind="synchronisation" x="-2088" y="200">CREATE_ERROR_HANDLER!</label></transition><transition><source ref="id33"/><target ref="id26"/><label kind="synchronisation" x="-2560" y="176">RAISE_APPLICATION_ERROR?</label><label kind="assignment" x="-2560" y="192">handler_process_id = findErrorHandler(),
-error_count = errorQueueLength()</label></transition></template><template><name>ProcessScheduler</name><declaration>int proc = -1;
+int error_message;</declaration>
+		<location id="id25" x="-2584" y="104">
+			<name x="-2594" y="74">s8</name>
+			<urgent/>
+		</location>
+		<location id="id26" x="-2256" y="232">
+			<name x="-2280" y="208">s1</name>
+			<urgent/>
+		</location>
+		<location id="id27" x="-2031" y="153">
+			<name x="-2023" y="129">s5</name>
+		</location>
+		<location id="id28" x="-2363" y="-8">
+			<name x="-2387" y="-32">s6</name>
+			<urgent/>
+		</location>
+		<location id="id29" x="-2125" y="102">
+			<name x="-2110" y="81">s3</name>
+			<urgent/>
+		</location>
+		<location id="id30" x="-2125" y="-8">
+			<name x="-2141" y="0">s4</name>
+			<urgent/>
+		</location>
+		<location id="id31" x="-2363" y="59">
+			<name x="-2388" y="34">s7</name>
+		</location>
+		<location id="id32" x="-2256" y="104">
+			<name x="-2280" y="80">s2</name>
+			<urgent/>
+		</location>
+		<location id="id33" x="-2584" y="232">
+			<name x="-2624" y="208">initial</name>
+		</location>
+		<init ref="id33"/>
+		<transition>
+			<source ref="id32"/>
+			<target ref="id25"/>
+			<label kind="guard" x="-2552" y="80">error_count &lt;= 0</label>
+			<label kind="synchronisation" x="-2552" y="64">RESTORE_CONTEXT!</label>
+		</transition>
+		<transition>
+			<source ref="id26"/>
+			<target ref="id32"/>
+			<label kind="synchronisation" x="-2252" y="170">SAVE_CONTEXT!</label>
+			<label kind="assignment" x="-2252" y="187">LOCK_LEVEL = LOCK_PREEMPTION()</label>
+		</transition>
+		<transition>
+			<source ref="id27"/>
+			<target ref="id32"/>
+			<label kind="synchronisation" x="-2227" y="110">NO_ERR?</label>
+			<label kind="assignment" x="-2227" y="127">error_count = error_count - 1</label>
+			<nail x="-2227" y="153"/>
+		</transition>
+		<transition>
+			<source ref="id32"/>
+			<target ref="id29"/>
+			<label kind="guard" x="-2235" y="85">error_count &gt; 0</label>
+		</transition>
+		<transition>
+			<source ref="id30"/>
+			<target ref="id27"/>
+			<label kind="guard" x="-2099" y="-34">handler_process_id == -1</label>
+			<label kind="synchronisation" x="-2099" y="-51">HM[error_code]!</label>
+			<nail x="-1997" y="-8"/>
+			<nail x="-1997" y="153"/>
+		</transition>
+		<transition>
+			<source ref="id28"/>
+			<target ref="id31"/>
+			<label kind="synchronisation" x="-2550" y="8">START[handler_process_id]!</label>
+		</transition>
+		<transition>
+			<source ref="id25"/>
+			<target ref="id33"/>
+			<label kind="synchronisation" x="-2576" y="128">UNLOCK_PREEMPT!</label>
+			<label kind="assignment" x="-2576" y="144">LOCK_LEVEL = UNLOCK_PREEMPTION()</label>
+			<nail x="-2584" y="168"/>
+		</transition>
+		<transition>
+			<source ref="id29"/>
+			<target ref="id30"/>
+			<label kind="synchronisation" x="-2116" y="59">GET_ERROR_STATUS!</label>
+			<label kind="assignment" x="-2116" y="42">error_code = getError()</label>
+		</transition>
+		<transition>
+			<source ref="id33"/>
+			<target ref="id33"/>
+			<label kind="synchronisation" x="-2520" y="256">REPORT_APPLICATION_MESSAGE?</label>
+			<label kind="assignment" x="-2520" y="272">error_message = getMessage()</label>
+			<nail x="-2584" y="304"/>
+			<nail x="-2520" y="304"/>
+		</transition>
+		<transition>
+			<source ref="id31"/>
+			<target ref="id32"/>
+			<label kind="synchronisation" x="-2346" y="25">SUSPEND_SELF[handler_process_id]?</label>
+			<label kind="assignment" x="-2346" y="34">error_count = error_count - 1</label>
+			<nail x="-2252" y="59"/>
+		</transition>
+		<transition>
+			<source ref="id30"/>
+			<target ref="id28"/>
+			<label kind="guard" x="-2320" y="-34">handler_process_id != -1</label>
+			<label kind="synchronisation" x="-2320" y="-51">CREATE_ERROR_HANDLER!</label>
+		</transition>
+		<transition>
+			<source ref="id33"/>
+			<target ref="id26"/>
+			<label kind="synchronisation" x="-2560" y="176">RAISE_APPLICATION_ERROR?</label>
+			<label kind="assignment" x="-2560" y="192">handler_process_id = findErrorHandler(),
+error_count = errorQueueLength()</label>
+		</transition>
+	</template>
+	<template>
+		<name>ErrorHandler</name>
+		<location id="id34" x="-263" y="8">
+			<urgent/>
+		</location>
+		<location id="id35" x="-552" y="8">
+		</location>
+		<init ref="id35"/>
+		<transition>
+			<source ref="id34"/>
+			<target ref="id35"/>
+			<label kind="synchronisation" x="-510" y="-93">START[handler_process_id]!</label>
+			<nail x="-263" y="-68"/>
+			<nail x="-552" y="-68"/>
+		</transition>
+		<transition>
+			<source ref="id35"/>
+			<target ref="id34"/>
+			<label kind="synchronisation" x="-518" y="-17">CREATE_ERROR_HANDLER?</label>
+		</transition>
+	</template>
+	<template>
+		<name>ProcessScheduler</name>
+		<declaration>int proc = -1;
 int i = 0;
 
 mode_id GET_PROCESS_STATUS(process_id id) {
@@ -455,22 +1158,203 @@ mode_id GET_PROCESS_STATUS(process_id id) {
 }
 
 int findReady() {
+   int j = 0;
    int i;
    int id = 0;
    // arbitrary big number expressing the lowest priority
    int highest_prior = 1000;
    for(i = 0; i &lt; PROCESSES; i++)
-      if(pss[i].part_id == current_part &amp;&amp; pss[i].prior &lt; highest_prior)
+      if(pss[i].part_id == current_part &amp;&amp; pss[i].prior &lt; highest_prior){
+         id = pss[i].id;
+         j = 0;
          if(GET_PROCESS_STATUS(pss[i].id) == 2){
-	    id = pss[i].id;
             highest_prior = pss[i].prior;
             return id;
          }
+    }
+   if(GET_PROCESS_STATUS(pss[j].id) == 0){
+	        setMode(2, id);
+   }
    return id;
-}</declaration><location id="id34" x="-5808" y="-1336"><name x="-5832" y="-1336">s6</name></location><location id="id35" x="-5568" y="-1336"><name x="-5592" y="-1336">s5</name><urgent/></location><location id="id36" x="-5608" y="-1280"><name x="-5632" y="-1280">s4</name><urgent/></location><location id="id37" x="-5376" y="-1280"><name x="-5400" y="-1280">s3</name><urgent/></location><location id="id38" x="-5376" y="-1208"><name x="-5400" y="-1208">s2</name><urgent/></location><location id="id39" x="-5896" y="-1280"><name x="-5928" y="-1288">s7</name><urgent/></location><location id="id40" x="-5608" y="-1208"><name x="-5632" y="-1208">s1</name><urgent/></location><location id="id41" x="-5896" y="-1208"><name x="-5944" y="-1216">initial</name></location><init ref="id41"/><transition><source ref="id38"/><target ref="id40"/><label kind="guard" x="-5584" y="-1104">i &lt; PROCESSES &amp;&amp; proc == -1</label><nail x="-5352" y="-1208"/><nail x="-5352" y="-1104"/><nail x="-5608" y="-1104"/></transition><transition><source ref="id34"/><target ref="id36"/><label kind="synchronisation" x="-5792" y="-1320">UNLOCK_PREEMPT?</label><nail x="-5808" y="-1296"/><nail x="-5616" y="-1296"/></transition><transition><source ref="id35"/><target ref="id34"/><label kind="synchronisation" x="-5784" y="-1360">RAISE_APPLICATION_ERROR!</label></transition><transition><source ref="id37"/><target ref="id35"/><label kind="guard" x="-5544" y="-1360">getErrors(current_part) != 0</label><nail x="-5376" y="-1336"/></transition><transition><source ref="id37"/><target ref="id36"/><label kind="guard" x="-5576" y="-1304">getErrors(current_part) == 0</label></transition><transition><source ref="id38"/><target ref="id37"/><label kind="guard" x="-5496" y="-1256">i &gt;= PROCESSES</label><label kind="assignment" x="-5408" y="-1240">i = 0</label></transition><transition><source ref="id38"/><target ref="id40"/><label kind="guard" x="-5584" y="-1144">i &lt; PROCESSES &amp;&amp; proc != -1</label><label kind="synchronisation" x="-5592" y="-1160">CHECK_SCHEDULABILITY[proc]!</label><nail x="-5376" y="-1160"/><nail x="-5592" y="-1160"/></transition><transition><source ref="id40"/><target ref="id38"/><label kind="assignment" x="-5576" y="-1208">proc = getAllProcesses(i),
-i++</label></transition><transition><source ref="id39"/><target ref="id41"/><label kind="synchronisation" x="-5960" y="-1256">NO_ERR!</label></transition><transition><source ref="id36"/><target ref="id39"/><label kind="assignment" x="-5832" y="-1280">current_proc = findReady()</label></transition><transition><source ref="id41"/><target ref="id40"/><label kind="synchronisation" x="-5880" y="-1232">SCHEDULE_PROCESSES[current_part]?</label><label kind="assignment" x="-5812" y="-1208">i = 0</label></transition></template><template><name>EventTemplate</name><parameter>int id, int part_id</parameter><declaration>int code;
-int event_number;</declaration><location id="id42" x="-488" y="-168"></location><location id="id43" x="-672" y="24"><name x="-682" y="-6">UP</name></location><location id="id44" x="-400" y="24"><urgent/></location><location id="id45" x="24" y="-168"><urgent/></location><location id="id46" x="-192" y="24"><name x="-184" y="0">DOWN</name></location><location id="id47" x="-192" y="-168"></location><init ref="id47"/><transition><source ref="id42"/><target ref="id47"/><label kind="synchronisation" x="-440" y="-232">RAISE_APPLICATION_ERROR!</label><label kind="assignment" x="-376" y="-208">code := 4</label><nail x="-448" y="-208"/><nail x="-232" y="-208"/></transition><transition><source ref="id47"/><target ref="id42"/><label kind="guard" x="-472" y="-168">event_number + 1 == getEventLimit(part_id)</label><label kind="synchronisation" x="-408" y="-152">CREATE_EVENT[id]?</label></transition><transition><source ref="id44"/><target ref="id43"/><label kind="synchronisation" x="-648" y="0">SCHEDULE_PROCESSES[part_id]!</label></transition><transition><source ref="id43"/><target ref="id46"/><label kind="synchronisation" x="-560" y="88">RESET_EVENT[id]?</label><nail x="-568" y="88"/><nail x="-232" y="88"/></transition><transition><source ref="id46"/><target ref="id44"/><label kind="synchronisation" x="-344" y="0">SET_EVENT[id]?</label></transition><transition><source ref="id45"/><target ref="id47"/><label kind="synchronisation" x="-176" y="-128">RAISE_APPLICATION_ERROR!</label><label kind="assignment" x="-112" y="-152">code := 5</label><nail x="-8" y="-128"/><nail x="-152" y="-128"/></transition><transition><source ref="id47"/><target ref="id45"/><label kind="guard" x="-160" y="-208">GET_PARTITION_STATUS(part_id) == 3</label><label kind="synchronisation" x="-160" y="-192">CREATE_EVENT[id]?</label></transition><transition><source ref="id47"/><target ref="id46"/><label kind="guard" x="-472" y="-104">GET_PARTITION_STATUS(part_id) != 3 &amp;&amp;
-event_number + 1 != getEventLimit(part_id)</label><label kind="synchronisation" x="-336" y="-56">CREATE_EVENT[id]?</label><label kind="assignment" x="-416" y="-32">event_number = event_number + 1</label></transition></template><template><name>SystemTick</name><declaration>clock x;
+}</declaration>
+		<location id="id36" x="-5808" y="-1336">
+			<name x="-5832" y="-1336">s6</name>
+		</location>
+		<location id="id37" x="-5568" y="-1336">
+			<name x="-5592" y="-1336">s5</name>
+			<urgent/>
+		</location>
+		<location id="id38" x="-5608" y="-1280">
+			<name x="-5632" y="-1280">s4</name>
+			<urgent/>
+		</location>
+		<location id="id39" x="-5376" y="-1280">
+			<name x="-5400" y="-1280">s3</name>
+			<urgent/>
+		</location>
+		<location id="id40" x="-5376" y="-1208">
+			<name x="-5400" y="-1208">s2</name>
+			<urgent/>
+		</location>
+		<location id="id41" x="-5896" y="-1280">
+			<name x="-5928" y="-1288">s7</name>
+			<urgent/>
+		</location>
+		<location id="id42" x="-5608" y="-1208">
+			<name x="-5632" y="-1208">s1</name>
+			<urgent/>
+		</location>
+		<location id="id43" x="-5896" y="-1208">
+			<name x="-5944" y="-1216">initial</name>
+		</location>
+		<init ref="id43"/>
+		<transition>
+			<source ref="id40"/>
+			<target ref="id42"/>
+			<label kind="guard" x="-5584" y="-1104">i &lt; PROCESSES &amp;&amp; proc == -1</label>
+			<nail x="-5352" y="-1208"/>
+			<nail x="-5352" y="-1104"/>
+			<nail x="-5608" y="-1104"/>
+		</transition>
+		<transition>
+			<source ref="id36"/>
+			<target ref="id38"/>
+			<label kind="synchronisation" x="-5792" y="-1320">UNLOCK_PREEMPT?</label>
+			<nail x="-5808" y="-1296"/>
+			<nail x="-5616" y="-1296"/>
+		</transition>
+		<transition>
+			<source ref="id37"/>
+			<target ref="id36"/>
+			<label kind="synchronisation" x="-5784" y="-1360">RAISE_APPLICATION_ERROR!</label>
+		</transition>
+		<transition>
+			<source ref="id39"/>
+			<target ref="id37"/>
+			<label kind="guard" x="-5544" y="-1360">getErrors(current_part) != 0</label>
+			<nail x="-5376" y="-1336"/>
+		</transition>
+		<transition>
+			<source ref="id39"/>
+			<target ref="id38"/>
+			<label kind="guard" x="-5576" y="-1304">getErrors(current_part) == 0</label>
+		</transition>
+		<transition>
+			<source ref="id40"/>
+			<target ref="id39"/>
+			<label kind="guard" x="-5496" y="-1256">i &gt;= PROCESSES</label>
+			<label kind="assignment" x="-5408" y="-1240">i = 0</label>
+		</transition>
+		<transition>
+			<source ref="id40"/>
+			<target ref="id42"/>
+			<label kind="guard" x="-5584" y="-1144">i &lt; PROCESSES &amp;&amp; proc != -1</label>
+			<label kind="synchronisation" x="-5592" y="-1160">CHECK_SCHEDULABILITY[proc]!</label>
+			<nail x="-5376" y="-1160"/>
+			<nail x="-5592" y="-1160"/>
+		</transition>
+		<transition>
+			<source ref="id42"/>
+			<target ref="id40"/>
+			<label kind="assignment" x="-5576" y="-1208">proc = getAllProcesses(i),
+i++</label>
+		</transition>
+		<transition>
+			<source ref="id41"/>
+			<target ref="id43"/>
+			<label kind="synchronisation" x="-5960" y="-1256">NO_ERR!</label>
+		</transition>
+		<transition>
+			<source ref="id38"/>
+			<target ref="id41"/>
+			<label kind="assignment" x="-5832" y="-1280">current_proc = findReady()</label>
+		</transition>
+		<transition>
+			<source ref="id43"/>
+			<target ref="id42"/>
+			<label kind="synchronisation" x="-5880" y="-1232">SCHEDULE_PROCESSES[current_part]?</label>
+			<label kind="assignment" x="-5812" y="-1208">i = 0</label>
+		</transition>
+	</template>
+	<template>
+		<name>EventTemplate</name>
+		<parameter>int id, int part_id</parameter>
+		<declaration>int code;
+int event_number;</declaration>
+		<location id="id44" x="-488" y="-168">
+		</location>
+		<location id="id45" x="-672" y="24">
+			<name x="-682" y="-6">UP</name>
+		</location>
+		<location id="id46" x="-400" y="24">
+			<urgent/>
+		</location>
+		<location id="id47" x="24" y="-168">
+			<urgent/>
+		</location>
+		<location id="id48" x="-192" y="24">
+			<name x="-184" y="0">DOWN</name>
+		</location>
+		<location id="id49" x="-192" y="-168">
+		</location>
+		<init ref="id49"/>
+		<transition>
+			<source ref="id44"/>
+			<target ref="id49"/>
+			<label kind="synchronisation" x="-440" y="-232">RAISE_APPLICATION_ERROR!</label>
+			<label kind="assignment" x="-376" y="-208">code := 4</label>
+			<nail x="-448" y="-208"/>
+			<nail x="-232" y="-208"/>
+		</transition>
+		<transition>
+			<source ref="id49"/>
+			<target ref="id44"/>
+			<label kind="guard" x="-472" y="-168">event_number + 1 == getEventLimit(part_id)</label>
+			<label kind="synchronisation" x="-408" y="-152">CREATE_EVENT[id]?</label>
+		</transition>
+		<transition>
+			<source ref="id46"/>
+			<target ref="id45"/>
+			<label kind="synchronisation" x="-648" y="0">SCHEDULE_PROCESSES[part_id]!</label>
+		</transition>
+		<transition>
+			<source ref="id45"/>
+			<target ref="id48"/>
+			<label kind="synchronisation" x="-560" y="88">RESET_EVENT[id]?</label>
+			<nail x="-568" y="88"/>
+			<nail x="-232" y="88"/>
+		</transition>
+		<transition>
+			<source ref="id48"/>
+			<target ref="id46"/>
+			<label kind="synchronisation" x="-344" y="0">SET_EVENT[id]?</label>
+		</transition>
+		<transition>
+			<source ref="id47"/>
+			<target ref="id49"/>
+			<label kind="synchronisation" x="-176" y="-128">RAISE_APPLICATION_ERROR!</label>
+			<label kind="assignment" x="-112" y="-152">code := 5</label>
+			<nail x="-8" y="-128"/>
+			<nail x="-152" y="-128"/>
+		</transition>
+		<transition>
+			<source ref="id49"/>
+			<target ref="id47"/>
+			<label kind="guard" x="-160" y="-208">GET_PARTITION_STATUS(part_id) == 3</label>
+			<label kind="synchronisation" x="-160" y="-192">CREATE_EVENT[id]?</label>
+		</transition>
+		<transition>
+			<source ref="id49"/>
+			<target ref="id48"/>
+			<label kind="guard" x="-472" y="-104">GET_PARTITION_STATUS(part_id) != 3 &amp;&amp;
+event_number + 1 != getEventLimit(part_id)</label>
+			<label kind="synchronisation" x="-336" y="-56">CREATE_EVENT[id]?</label>
+			<label kind="assignment" x="-416" y="-32">event_number = event_number + 1</label>
+		</transition>
+	</template>
+	<template>
+		<name>SystemTick</name>
+		<declaration>clock x;
 
 int saved_counter = 100;	// initializing counter with an arbitrary high value
 bool passed = true;
@@ -479,11 +1363,180 @@ bool failed = false;
 // checking if the counter was updated after the last sysTick generated (by the partition scheduler)
 bool counter_check() {
    return passed;
-}</declaration><location id="id48" x="-528" y="-64"><name x="-560" y="-64">s2</name><urgent/></location><location id="id49" x="-336" y="-64"><name x="-360" y="-64">s3</name><urgent/></location><location id="id50" x="-1088" y="-64"><name x="-1104" y="-96">s13</name><urgent/></location><location id="id51" x="-808" y="16"><name x="-840" y="-8">s10</name></location><location id="id52" x="-728" y="16"><name x="-752" y="-8">s9</name><urgent/></location><location id="id53" x="-728" y="72"><name x="-752" y="72">s8</name></location><location id="id54" x="-824" y="-160"><name x="-864" y="-168">s15</name></location><location id="id55" x="-1088" y="72"><name x="-1104" y="88">s12</name><urgent/></location><location id="id56" x="-520" y="144"><name x="-544" y="120">s6</name></location><location id="id57" x="-808" y="72"><name x="-840" y="72">s11</name><urgent/></location><location id="id58" x="-520" y="72"><name x="-544" y="72">s7</name><urgent/></location><location id="id59" x="-336" y="144"><name x="-360" y="120">s5</name><urgent/></location><location id="id60" x="-336" y="72"><name x="-360" y="48">s4</name><urgent/></location><location id="id61" x="-680" y="-64"><name x="-712" y="-64">s1</name><label kind="invariant" x="-728" y="-48">x &lt;= interr_freq</label></location><location id="id62" x="-680" y="-176"><name x="-690" y="-206">initial</name></location><init ref="id62"/><transition><source ref="id50"/><target ref="id61"/><label kind="synchronisation" x="-1072" y="-104">START[current_proc]!</label><label kind="assignment" x="-1072" y="-88">x = 0</label></transition><transition><source ref="id61"/><target ref="id48"/><label kind="guard" x="-664" y="-104">x &gt;= interr_freq &amp;&amp;
-LOCK_LEVEL == 1</label></transition><transition><source ref="id49"/><target ref="id60"/><label kind="guard" x="-304" y="-16">current_proc == -1</label><nail x="-312" y="-40"/><nail x="-312" y="40"/></transition><transition><source ref="id49"/><target ref="id60"/><label kind="guard" x="-456" y="8">current_proc != -1</label><label kind="synchronisation" x="-504" y="-8">SUSPEND[current_proc]!</label></transition><transition><source ref="id51"/><target ref="id57"/><label kind="synchronisation" x="-800" y="32">NO_ERR?</label></transition><transition><source ref="id52"/><target ref="id51"/><label kind="synchronisation" x="-888" y="-24">SCHEDULE_PROCESSES[current_part]!</label></transition><transition><source ref="id53"/><target ref="id52"/><label kind="synchronisation" x="-720" y="32">NO_ERR?</label></transition><transition><source ref="id54"/><target ref="id61"/><label kind="synchronisation" x="-856" y="-192">UNLOCK_PREEMPT?</label><label kind="assignment" x="-776" y="-160">x = 0</label><nail x="-736" y="-160"/></transition><transition><source ref="id61"/><target ref="id54"/><label kind="guard" x="-888" y="-128">x &gt;= interr_freq &amp;&amp;
-LOCK_LEVEL == 0</label></transition><transition><source ref="id57"/><target ref="id55"/><label kind="guard" x="-1056" y="96">majorFrame &gt;= majorFrameSeconds</label><label kind="assignment" x="-1056" y="120">majorFrame = 0,
-watchdog_counter = 0</label><nail x="-824" y="120"/><nail x="-1064" y="120"/></transition><transition><source ref="id57"/><target ref="id55"/><label kind="guard" x="-1064" y="48">majorFrame &lt;= majorFrameSeconds</label></transition><transition><source ref="id56"/><target ref="id58"/><label kind="synchronisation" x="-520" y="104">UNLOCK_PREEMPT?</label></transition><transition><source ref="id60"/><target ref="id58"/><label kind="guard" x="-520" y="40">counter_check() == passed</label></transition><transition><source ref="id58"/><target ref="id53"/><label kind="synchronisation" x="-712" y="80">SCHEDULE_PARTITIONS!</label></transition><transition><source ref="id59"/><target ref="id56"/><label kind="synchronisation" x="-520" y="152">RAISE_APPLICATION_ERROR!</label></transition><transition><source ref="id60"/><target ref="id59"/><label kind="guard" x="-328" y="96">counter_check() == failed</label></transition><transition><source ref="id48"/><target ref="id49"/><label kind="synchronisation" x="-512" y="-88">SAVE_CONTEXT!</label></transition><transition><source ref="id55"/><target ref="id50"/><label kind="synchronisation" x="-1080" y="-8">RESTORE_CONTEXT!</label><label kind="assignment" x="-1080" y="8">saved_counter = watchdog_counter</label></transition><transition><source ref="id62"/><target ref="id61"/><label kind="assignment" x="-664" y="-160">x = 0,
-majorFrame = 0</label></transition></template><template><name>PartitionInit</name><declaration>clock x;
+}</declaration>
+		<location id="id50" x="-528" y="-64">
+			<name x="-560" y="-64">s2</name>
+			<label kind="invariant" x="-538" y="-47">x' == 0</label>
+			<urgent/>
+		</location>
+		<location id="id51" x="-336" y="-64">
+			<name x="-360" y="-64">s3</name>
+			<urgent/>
+		</location>
+		<location id="id52" x="-1088" y="-64">
+			<name x="-1104" y="-96">s13</name>
+			<urgent/>
+		</location>
+		<location id="id53" x="-808" y="16">
+			<name x="-840" y="-8">s10</name>
+		</location>
+		<location id="id54" x="-728" y="16">
+			<name x="-752" y="-8">s9</name>
+			<urgent/>
+		</location>
+		<location id="id55" x="-728" y="72">
+			<name x="-752" y="72">s8</name>
+		</location>
+		<location id="id56" x="-824" y="-160">
+			<name x="-864" y="-168">s14</name>
+			<label kind="invariant" x="-834" y="-143">x' == 0</label>
+		</location>
+		<location id="id57" x="-1088" y="72">
+			<name x="-1104" y="88">s12</name>
+			<urgent/>
+		</location>
+		<location id="id58" x="-520" y="144">
+			<name x="-544" y="120">s6</name>
+		</location>
+		<location id="id59" x="-808" y="72">
+			<name x="-840" y="72">s11</name>
+			<urgent/>
+		</location>
+		<location id="id60" x="-520" y="72">
+			<name x="-544" y="72">s7</name>
+			<urgent/>
+		</location>
+		<location id="id61" x="-336" y="144">
+			<name x="-360" y="120">s5</name>
+			<urgent/>
+		</location>
+		<location id="id62" x="-336" y="72">
+			<name x="-360" y="48">s4</name>
+			<urgent/>
+		</location>
+		<location id="id63" x="-680" y="-64">
+			<name x="-712" y="-64">s1</name>
+			<label kind="invariant" x="-722" y="-51">x' == 1 &amp;&amp;
+x &lt;= interr_freq</label>
+		</location>
+		<location id="id64" x="-527" y="-170">
+			<name x="-537" y="-200">initial</name>
+			<committed/>
+		</location>
+		<init ref="id64"/>
+		<transition>
+			<source ref="id52"/>
+			<target ref="id63"/>
+			<label kind="synchronisation" x="-1072" y="-104">START[current_proc]!</label>
+			<label kind="assignment" x="-1072" y="-88">x = 0</label>
+		</transition>
+		<transition>
+			<source ref="id63"/>
+			<target ref="id50"/>
+			<label kind="guard" x="-664" y="-104">x &gt;= interr_freq &amp;&amp;
+LOCK_LEVEL == 1</label>
+		</transition>
+		<transition>
+			<source ref="id51"/>
+			<target ref="id62"/>
+			<label kind="guard" x="-304" y="-16">current_proc == -1</label>
+			<nail x="-312" y="-40"/>
+			<nail x="-312" y="40"/>
+		</transition>
+		<transition>
+			<source ref="id51"/>
+			<target ref="id62"/>
+			<label kind="guard" x="-456" y="8">current_proc != -1</label>
+			<label kind="synchronisation" x="-504" y="-8">SUSPEND[current_proc]!</label>
+		</transition>
+		<transition>
+			<source ref="id53"/>
+			<target ref="id59"/>
+			<label kind="synchronisation" x="-800" y="32">NO_ERR?</label>
+		</transition>
+		<transition>
+			<source ref="id54"/>
+			<target ref="id53"/>
+			<label kind="synchronisation" x="-888" y="-24">SCHEDULE_PROCESSES[current_part]!</label>
+		</transition>
+		<transition>
+			<source ref="id55"/>
+			<target ref="id54"/>
+			<label kind="synchronisation" x="-720" y="32">NO_ERR?</label>
+		</transition>
+		<transition>
+			<source ref="id56"/>
+			<target ref="id63"/>
+			<label kind="synchronisation" x="-856" y="-192">UNLOCK_PREEMPT?</label>
+			<label kind="assignment" x="-776" y="-160">x = 0</label>
+			<nail x="-736" y="-160"/>
+		</transition>
+		<transition>
+			<source ref="id63"/>
+			<target ref="id56"/>
+			<label kind="guard" x="-888" y="-128">x &gt;= interr_freq &amp;&amp;
+LOCK_LEVEL == 0</label>
+		</transition>
+		<transition>
+			<source ref="id59"/>
+			<target ref="id57"/>
+			<label kind="guard" x="-1056" y="96">majorFrame &gt;= majorFrameSeconds</label>
+			<label kind="assignment" x="-1056" y="120">majorFrame = 0,
+watchdog_counter = 0</label>
+			<nail x="-824" y="120"/>
+			<nail x="-1064" y="120"/>
+		</transition>
+		<transition>
+			<source ref="id59"/>
+			<target ref="id57"/>
+			<label kind="guard" x="-1064" y="48">majorFrame &lt;= majorFrameSeconds</label>
+		</transition>
+		<transition>
+			<source ref="id58"/>
+			<target ref="id60"/>
+			<label kind="synchronisation" x="-520" y="104">UNLOCK_PREEMPT?</label>
+		</transition>
+		<transition>
+			<source ref="id62"/>
+			<target ref="id60"/>
+			<label kind="guard" x="-520" y="40">counter_check() == passed</label>
+		</transition>
+		<transition>
+			<source ref="id60"/>
+			<target ref="id55"/>
+			<label kind="synchronisation" x="-712" y="80">SCHEDULE_PARTITIONS!</label>
+		</transition>
+		<transition>
+			<source ref="id61"/>
+			<target ref="id58"/>
+			<label kind="synchronisation" x="-520" y="152">RAISE_APPLICATION_ERROR!</label>
+		</transition>
+		<transition>
+			<source ref="id62"/>
+			<target ref="id61"/>
+			<label kind="guard" x="-328" y="96">counter_check() == failed</label>
+		</transition>
+		<transition>
+			<source ref="id50"/>
+			<target ref="id51"/>
+			<label kind="synchronisation" x="-512" y="-88">SAVE_CONTEXT!</label>
+		</transition>
+		<transition>
+			<source ref="id57"/>
+			<target ref="id52"/>
+			<label kind="synchronisation" x="-1080" y="-8">RESTORE_CONTEXT!</label>
+			<label kind="assignment" x="-1079" y="8">saved_counter = watchdog_counter</label>
+		</transition>
+		<transition>
+			<source ref="id64"/>
+			<target ref="id50"/>
+			<label kind="assignment" x="-518" y="-161">x = 0,
+majorFrame = 0</label>
+		</transition>
+	</template>
+	<template>
+		<name>PartitionInit</name>
+		<declaration>clock x;
 
 int duration = 0;
 int proc;
@@ -495,7 +1548,107 @@ int getInitDuration(){
          return initDuration[i].duration;
    return 0;
 }
-</declaration><location id="id63" x="56" y="-208"><name x="64" y="-208">s4</name></location><location id="id64" x="56" y="-56"><name x="64" y="-56">s3</name><urgent/></location><location id="id65" x="-136" y="-208"><name x="-128" y="-208">s5</name><urgent/></location><location id="id66" x="-416" y="-208"><name x="-440" y="-208">s6</name><urgent/></location><location id="id67" x="-136" y="-56"><name x="-128" y="-56">s2</name><urgent/></location><location id="id68" x="-424" y="-56"><name x="-448" y="-56">s1</name><urgent/></location><location id="id69" x="-608" y="-208"><name x="-640" y="-216">s7</name><label kind="invariant" x="-648" y="-240">x &lt;= duration</label></location><location id="id70" x="-608" y="-56"><name x="-656" y="-64">initial</name></location><init ref="id70"/><transition><source ref="id63"/><target ref="id65"/><label kind="synchronisation" x="-112" y="-232">UNLOCK_PREEMPT?</label></transition><transition><source ref="id64"/><target ref="id63"/><label kind="synchronisation" x="64" y="-104">RAISE_APPLICATION_ERROR!</label></transition><transition><source ref="id67"/><target ref="id64"/><label kind="guard" x="-120" y="-88">getErrors(current_part) != 0</label></transition><transition><source ref="id67"/><target ref="id65"/><label kind="guard" x="-312" y="-184">getErrors(current_part) == 0</label></transition><transition><source ref="id66"/><target ref="id69"/><label kind="guard" x="-536" y="-240">proc == -1</label><label kind="assignment" x="-536" y="-224">x = 0</label></transition><transition><source ref="id65"/><target ref="id66"/><label kind="assignment" x="-344" y="-232">proc = getProcess()</label></transition><transition><source ref="id69"/><target ref="id70"/><label kind="synchronisation" x="-600" y="-144">SET_PARTITION_MODE[current_part][3]!</label><label kind="assignment" x="-600" y="-128">x = 0</label><nail x="-608" y="-136"/></transition><transition><source ref="id66"/><target ref="id65"/><label kind="guard" x="-408" y="-264">proc != -1</label><label kind="synchronisation" x="-408" y="-280">START[proc]!</label><nail x="-416" y="-240"/><nail x="-136" y="-240"/></transition><transition><source ref="id68"/><target ref="id67"/><label kind="guard" x="-424" y="-88">GET_PARTITION_STATUS(current_part) != 0</label><nail x="-368" y="-56"/><nail x="-256" y="-56"/></transition><transition><source ref="id68"/><target ref="id67"/><label kind="guard" x="-424" y="-24">GET_PARTITION_STATUS(current_part) == 0</label><label kind="synchronisation" x="-408" y="-8">SET_PARTITION_MODE[current_part][1]!</label><nail x="-400" y="-32"/><nail x="-168" y="-32"/></transition><transition><source ref="id70"/><target ref="id68"/><label kind="synchronisation" x="-592" y="-56">START_PARTITION?</label><label kind="assignment" x="-592" y="-40">duration = getInitDuration()</label></transition></template><system>// Place template instantiations here.
+</declaration>
+		<location id="id65" x="-612" y="-204">
+			<name x="-646" y="-204">s7</name>
+			<label kind="invariant" x="-646" y="-255">x' == 1 &amp;&amp;
+x &lt;= duration</label>
+		</location>
+		<location id="id66" x="56" y="-208">
+			<name x="64" y="-208">s4</name>
+		</location>
+		<location id="id67" x="56" y="-56">
+			<name x="64" y="-56">s3</name>
+			<urgent/>
+		</location>
+		<location id="id68" x="-136" y="-208">
+			<name x="-128" y="-208">s5</name>
+			<urgent/>
+		</location>
+		<location id="id69" x="-416" y="-208">
+			<name x="-440" y="-208">s6</name>
+			<urgent/>
+		</location>
+		<location id="id70" x="-136" y="-56">
+			<name x="-128" y="-56">s2</name>
+			<urgent/>
+		</location>
+		<location id="id71" x="-424" y="-56">
+			<name x="-448" y="-56">s1</name>
+			<urgent/>
+		</location>
+		<location id="id72" x="-608" y="-56">
+			<name x="-656" y="-64">initial</name>
+			<label kind="invariant" x="-654" y="-42">x' == 0</label>
+		</location>
+		<init ref="id72"/>
+		<transition>
+			<source ref="id69"/>
+			<target ref="id65"/>
+			<label kind="guard" x="-535" y="-246">proc == -1</label>
+			<label kind="assignment" x="-535" y="-229">x = 0</label>
+		</transition>
+		<transition>
+			<source ref="id66"/>
+			<target ref="id68"/>
+			<label kind="synchronisation" x="-112" y="-232">UNLOCK_PREEMPT?</label>
+		</transition>
+		<transition>
+			<source ref="id67"/>
+			<target ref="id66"/>
+			<label kind="synchronisation" x="64" y="-104">RAISE_APPLICATION_ERROR!</label>
+		</transition>
+		<transition>
+			<source ref="id70"/>
+			<target ref="id67"/>
+			<label kind="guard" x="-120" y="-88">getErrors(current_part) != 0</label>
+		</transition>
+		<transition>
+			<source ref="id70"/>
+			<target ref="id68"/>
+			<label kind="guard" x="-312" y="-184">getErrors(current_part) == 0</label>
+		</transition>
+		<transition>
+			<source ref="id68"/>
+			<target ref="id69"/>
+			<label kind="assignment" x="-344" y="-232">proc = getProcess()</label>
+		</transition>
+		<transition>
+			<source ref="id65"/>
+			<target ref="id72"/>
+			<label kind="synchronisation" x="-603" y="-144">SET_PARTITION_MODE[current_part][3]!</label>
+		</transition>
+		<transition>
+			<source ref="id69"/>
+			<target ref="id68"/>
+			<label kind="guard" x="-408" y="-264">proc != -1</label>
+			<label kind="synchronisation" x="-408" y="-280">START[proc]!</label>
+			<nail x="-416" y="-240"/>
+			<nail x="-136" y="-240"/>
+		</transition>
+		<transition>
+			<source ref="id71"/>
+			<target ref="id70"/>
+			<label kind="guard" x="-424" y="-88">GET_PARTITION_STATUS(current_part) != 0</label>
+			<nail x="-368" y="-56"/>
+			<nail x="-256" y="-56"/>
+		</transition>
+		<transition>
+			<source ref="id71"/>
+			<target ref="id70"/>
+			<label kind="guard" x="-424" y="-24">GET_PARTITION_STATUS(current_part) == 0</label>
+			<label kind="synchronisation" x="-408" y="-8">SET_PARTITION_MODE[current_part][1]!</label>
+			<nail x="-400" y="-32"/>
+			<nail x="-168" y="-32"/>
+		</transition>
+		<transition>
+			<source ref="id72"/>
+			<target ref="id71"/>
+			<label kind="synchronisation" x="-592" y="-56">START_PARTITION?</label>
+			<label kind="assignment" x="-592" y="-40">duration = getInitDuration()</label>
+		</transition>
+	</template>
+	<system>// Place template instantiations here.
 
 sysTick = SystemTick();
 part_scheduler = PartitionScheduler();
@@ -503,6 +1656,76 @@ proc_scheduler = ProcessScheduler();
 partInit = PartitionInit();
 healthMonitor = HealthMonitorTemplate();
 
+//proc1 = Process(0, 20);
+//proc2 = Process(1, 20);
+//proc3 = Process(2, 20);
+//proc4 = Process(3, 20);
+//proc5 = Process(4, 20);
+
 // List one or more processes to be composed into a system.
 system sysTick, part_scheduler, proc_scheduler, partInit,
-	Partition, Process, healthMonitor;</system></nta>
+	Partition, healthMonitor, ErrorHandler,
+    Process;</system>
+	<queries>
+		<query>
+			<formula>A&lt;&gt; Process(1).RUNNING
+			</formula>
+			<comment>
+			</comment>
+		</query>
+		<query>
+			<formula>sysTick.s2 --&gt; part_scheduler.initial
+			</formula>
+			<comment>
+			</comment>
+		</query>
+		<query>
+			<formula>A&lt;&gt; sysTick.s2 --&gt; part_scheduler.initial
+			</formula>
+			<comment>
+			</comment>
+		</query>
+		<query>
+			<formula>E[ &lt;= 1000; 100] (max: sum(i:process_id) Process(i).RUNNING)
+			</formula>
+			<comment>
+			</comment>
+		</query>
+		<query>
+			<formula>A[] not (proc0.RUNNING and proc1.RUNNING)
+			</formula>
+			<comment>
+			</comment>
+		</query>
+		<query>
+			<formula>Pr[ &lt;= 1000] (&lt;&gt; Process(1).IMPEDED)
+			</formula>
+			<comment>
+			</comment>
+		</query>
+		<query>
+			<formula>A[] not deadlock
+			</formula>
+			<comment>
+			</comment>
+		</query>
+		<query>
+			<formula>E&lt;&gt; partition1.COLD
+			</formula>
+			<comment>
+			</comment>
+		</query>
+		<query>
+			<formula>E&lt;&gt; partition1.NORMAL
+			</formula>
+			<comment>
+			</comment>
+		</query>
+		<query>
+			<formula>E&lt;&gt; Process(0).RUNNING
+			</formula>
+			<comment>
+			</comment>
+		</query>
+	</queries>
+</nta>
