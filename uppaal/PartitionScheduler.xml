@@ -6,16 +6,20 @@
 
 const int majorFrameSeconds = 200;
 clock majorFrame;
+
 // OS interrupt frequency
-int interr_freq = 1;
+const int interr_freq = 1;
+
+// scaling of timing properties constant
+const int n = 1;
 
 // PARTITION IDENTIFICATION ----------------------------------------------
 
-// used for partition and process modes indication
-typedef int [0, 3] mode_id;
-
 // number of partitions (0-th partition is placeholder-empty partition)
 const int PARTITIONS = 6;
+
+// used for partition and process modes indication
+typedef int [0, 3] mode_id;
 typedef int[0, PARTITIONS - 1] partition_id;
 
 typedef struct {
@@ -50,7 +54,7 @@ const InitDuration initDuration[PARTITIONS] = {
 };
 
 urgent broadcast chan START_PARTITION;                                //
-broadcast chan SET_PARTITION_MODE[partition_id][mode_id];
+urgent broadcast chan SET_PARTITION_MODE[partition_id][mode_id];
 urgent broadcast chan SCHEDULE_PARTITIONS;                            //
 
 partition_id current_part = 0; // curent partition ID
@@ -137,19 +141,12 @@ typedef const struct {
    int prior;
 } ProcessType;
 
-int n = 1;
 
 const ProcessType pss[PROCESSES] = {
-   {0, 0, 200, 20, 0},
+   {0, 0, 200, 1, 0},
    {1, 1, 200, 10, 2},
-   //{2, 1, 20, 3, 1},
    {2, 2, 200, 10, 0},
-  // {4, 2, 20, 3, 1},
-   //{5, 2, 50, 2, 2},
    {3, 3, 200, 20, 0},
-  // {7, 3, 50, 3, 1},
-   //{8, 3, 50, 2, 2},
-   //{9, 4, 50, 1, 0},
    {4, 4, 200, 30, 1},
    {5, 5, 200, 10, 1}
 };
@@ -162,15 +159,8 @@ typedef struct {
 
 ProcessMode psm[PROCESSES] = {
    {0, 0},
-//   {1, 0},
-  // {2, 0},
    {1, 0},
-//   {4, 0},
-//   {5, 0},
    {2, 0},
- //  {7, 0},
-  // {8, 0},
-  // {9, 0},
    {3, 0},
    {4, 0},
    {5, 0}
@@ -178,15 +168,15 @@ ProcessMode psm[PROCESSES] = {
 
 // broadcast because it initiates scheduling process and partition processes
 urgent broadcast chan SCHEDULE_PROCESSES[partition_id];
-broadcast chan START[process_id];
+urgent broadcast chan START[process_id];
 urgent broadcast chan RUN[process_id];
 urgent broadcast chan PERIODIC_WAIT[process_id];
-broadcast chan SUSPEND[process_id];
+urgent broadcast chan SUSPEND[process_id];
 urgent broadcast chan SUSPEND_SELF[process_id];
 broadcast chan STOP_SELF[process_id];
-broadcast chan STOP[process_id];    //
-broadcast chan RESUME[process_id];    //
-broadcast chan CHECK_SCHEDULABILITY[process_id];
+urgent broadcast chan STOP[process_id];    //
+urgent broadcast chan RESUME[process_id];    //
+urgent broadcast chan CHECK_SCHEDULABILITY[process_id];
 
 int current_proc = 0;	// current process ID
 int previous_proc = 0; // most recent process ID
@@ -204,9 +194,8 @@ mode_id getMode(process_id id) {
 mode_id setMode(mode_id mode, process_id id) {
    int i;
    for(i = 0; i &lt; PROCESSES; i++)
-      if(psm[i].id == id){
+      if(psm[i].id == id)
          psm[i].mode = mode;
-      }
    return mode;
 }
 
@@ -282,13 +271,7 @@ typedef struct {
 //   {2, 0},
 //   {3, 0},
 //   {4, 0},
-//   {5, 0},
-//   {6, 0},
-//  {7, 0},
-//   {8, 0},
-//   {6, 0},
-//   {7, 0},
-//   {8, 0}
+//   {5, 0}
 //};
 
 typedef struct {
@@ -301,7 +284,7 @@ typedef struct {
 int watchdog_counter = 0;
 
 
-broadcast chan SAVE_CONTEXT;
+urgent broadcast chan SAVE_CONTEXT;
 urgent broadcast chan RESTORE_CONTEXT;
 urgent broadcast chan NO_ERR;    //
 
@@ -337,9 +320,6 @@ Error errorQueue[PARTITIONS] = {
    {5, 0}
 };
 
-int errorQueueLength() {
-   return 0;
-}
 
 int getError() {
    return 0;
@@ -364,10 +344,6 @@ int errorOccurences[7] = {0, 0, 0, 0, 0, 0, 0};
 
 // -----------------------------------------------------------------------
 
-int findHealthMonitorProcess(int id) {
-   return -1;
-}
-
 int getErrors(partition_id id) {
 
    return 0;
@@ -379,6 +355,11 @@ int registerError(error_id code) {
    error_count++;
    //errorOccurences[code] = errorOccurences[code] + 1;
    return code;
+}
+
+
+int errorQueueLength() {
+   return error_count;
 }
 
 int handler_process_id = 0; // error handler process id of a particular partition (if any)
@@ -731,8 +712,6 @@ x' == 0</label>
 		<transition>
 			<source ref="id22"/>
 			<target ref="id23"/>
-			<label kind="guard" x="146" y="-114">y &lt;= deadline &amp;&amp;
-x &lt;= duration</label>
 			<label kind="synchronisation" x="144" y="-136">SAVE_CONTEXT?</label>
 			<label kind="assignment" x="144" y="-120">previous_proc = id,
 mode = setMode(2)</label>
@@ -766,7 +745,6 @@ x &gt;= duration</label>
 		<transition>
 			<source ref="id24"/>
 			<target ref="id16"/>
-			<label kind="guard" x="-542" y="-74">y &lt;= deadline</label>
 			<label kind="synchronisation" x="-552" y="-40">STOP[id]?</label>
 			<nail x="-560" y="-40"/>
 			<nail x="-560" y="-152"/>
@@ -790,15 +768,13 @@ x &gt;= duration</label>
 			<target ref="id11"/>
 			<label kind="guard" x="-256" y="40">LOCK_LEVEL == 1 &amp;&amp;
 getPeriod(id) == -1 &amp;&amp;
-waitingEvent(id) == 0 &amp;&amp;
-y &lt;= deadline</label>
+waitingEvent(id) == 0</label>
 			<label kind="synchronisation" x="-256" y="24">RESUME[id]?</label>
 			<nail x="-264" y="88"/>
 		</transition>
 		<transition>
 			<source ref="id23"/>
 			<target ref="id24"/>
-			<label kind="guard" x="-222" y="-146">y &lt;= deadline</label>
 			<label kind="synchronisation" x="-232" y="-152">SET_PARTITION_MODE[part_id][2]?</label>
 			<label kind="assignment" x="-232" y="-136">mode = setMode(1)</label>
 			<nail x="32" y="-112"/>
@@ -807,7 +783,6 @@ y &lt;= deadline</label>
 		<transition>
 			<source ref="id23"/>
 			<target ref="id24"/>
-			<label kind="guard" x="42" y="-95">y &lt;= deadline</label>
 			<label kind="synchronisation" x="-232" y="-112">SET_PARTITION_MODE[part_id][1]?</label>
 			<label kind="assignment" x="-232" y="-96">mode = setMode(1)</label>
 			<nail x="24" y="-80"/>
@@ -890,8 +865,9 @@ mode = setMode(0)</label>
 		<transition>
 			<source ref="id22"/>
 			<target ref="id13"/>
-			<label kind="guard" x="110" y="-280">LOCK_LEVEL == 0</label>
-			<label kind="synchronisation" x="110" y="-297">STOP_SELF[id]?</label>
+			<label kind="guard" x="110" y="-280">LOCK_LEVEL == 0 &amp;&amp;
+x &gt;= duration</label>
+			<label kind="synchronisation" x="110" y="-297">STOP_SELF[id]!</label>
 			<label kind="assignment" x="110" y="-263">previous_proc = -1</label>
 			<nail x="240" y="-240"/>
 		</transition>
@@ -924,7 +900,6 @@ mode = setMode(0)</label>
 		<transition>
 			<source ref="id24"/>
 			<target ref="id16"/>
-			<label kind="guard" x="-534" y="-98">y &lt;= deadline</label>
 			<label kind="synchronisation" x="-544" y="-64">SET_PARTITION_MODE[part_id][0]?</label>
 			<nail x="-304" y="-64"/>
 			<nail x="-552" y="-64"/>
@@ -970,8 +945,7 @@ mode = setMode(2)</label>
 		<transition>
 			<source ref="id23"/>
 			<target ref="id24"/>
-			<label kind="guard" x="-48" y="32">getPeriod(id) == -1 &amp;&amp;
-y &lt;= deadline</label>
+			<label kind="guard" x="-48" y="32">getPeriod(id) == -1</label>
 			<label kind="synchronisation" x="-24" y="0">SUSPEND[id]?</label>
 			<label kind="assignment" x="-48" y="16">mode = setMode(1)</label>
 			<nail x="72" y="0"/>
@@ -988,14 +962,12 @@ y &lt;= deadline</label>
 		<transition>
 			<source ref="id23"/>
 			<target ref="id22"/>
-			<label kind="guard" x="103" y="-75">y &lt;= deadline</label>
 			<label kind="synchronisation" x="153" y="-34">START[id]?</label>
 			<label kind="assignment" x="153" y="-17">mode = setMode(3)</label>
 		</transition>
 		<transition>
 			<source ref="id24"/>
 			<target ref="id23"/>
-			<label kind="guard" x="-262" y="-75">y &lt;= deadline</label>
 			<label kind="synchronisation" x="-232" y="-40">SET_PARTITION_MODE[part_id][3]?</label>
 			<label kind="assignment" x="-232" y="-24">mode = setMode(2)</label>
 		</transition>
